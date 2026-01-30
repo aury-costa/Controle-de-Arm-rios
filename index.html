@@ -14,6 +14,8 @@
         <div class="title">Controle de Armários</div>
         <div class="subtitle">Mapeie colaboradores ↔ armário e controle disponibilidade</div>
       </div>
+        <div class="conn" id="connStatus">Conectando…</div>
+      </div>
     </div>
 
     <div class="stats">
@@ -62,6 +64,7 @@
               <th>Admissão</th>
               <th>Cargo</th>
               <th>Armário</th>
+              <th>Posição</th>
               <th>Chave entregue em</th>
               <th></th>
             </tr>
@@ -70,7 +73,7 @@
         </table>
       </div>
       <div class="footer-note">
-        <span class="muted">Os dados ficam salvos no seu navegador (LocalStorage). Use Exportar para backup.</span>
+        <span class="muted">Os dados ficam salvos no Firebase (tempo real). Use Exportar para backup.</span>
       </div>
     </section>
 
@@ -90,6 +93,20 @@
           <div class="lockers-title">Armários disponíveis</div>
           <div class="lockers-sub" id="freeSummary"></div>
         </div>
+        
+        <div class="card locker-pos-card">
+          <h3>Posição (Cima/Baixo)</h3>
+          <p class="muted small">Defina a posição de um armário pelo número. Se não definir, o app usa a regra padrão da aba Config.</p>
+          <div class="row">
+            <input type="number" id="posNumber" min="1" placeholder="Nº do armário" />
+            <select id="posValue">
+              <option value="BAIXO">BAIXO</option>
+              <option value="CIMA">CIMA</option>
+            </select>
+            <button class="btn" id="btnSavePos">Salvar posição</button>
+          </div>
+        </div>
+
         <div id="freeGrid" class="free-grid"></div>
       </div>
     </section>
@@ -130,7 +147,18 @@
 
     <section class="panel" id="tab-config">
       <div class="cards">
+        
         <div class="card">
+          <h3>Regra padrão Cima/Baixo</h3>
+          <p class="muted">Se não houver configuração por número, o app usa esta regra:</p>
+          <p class="muted small"><b>1 até X = BAIXO</b> • <b>X+1 até Total = CIMA</b></p>
+          <div class="row">
+            <input type="number" id="splitInput" min="0" />
+            <button class="btn" id="btnSaveSplit">Salvar</button>
+          </div>
+        </div>
+
+<div class="card">
           <h3>Total de armários</h3>
           <p class="muted">Por padrão está em 300. Se mudar, a lista de disponíveis e validações seguem o novo total.</p>
           <div class="row">
@@ -205,6 +233,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
