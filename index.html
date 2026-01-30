@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Armários • Colaboradores</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🔐</div>
+      <div>
+        <div class="title">Controle de Armários</div>
+        <div class="subtitle">Mapeie colaboradores ↔ armário e controle disponibilidade</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="pill">
+        <div class="pill-label">Total</div>
+        <div class="pill-value" id="totalLockers">300</div>
+      </div>
+      <div class="pill">
+        <div class="pill-label">Ocupados</div>
+        <div class="pill-value" id="usedLockers">0</div>
+      </div>
+      <div class="pill pill-ok">
+        <div class="pill-label">Disponíveis</div>
+        <div class="pill-value" id="freeLockers">300</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="tabs">
+      <button class="tab active" data-tab="colabs">Colaboradores</button>
+      <button class="tab" data-tab="lockers">Armários disponíveis</button>
+      <button class="tab" data-tab="import">Importar/Exportar</button>
+      <button class="tab" data-tab="config">Config</button>
+    </nav>
+
+    <section class="panel active" id="tab-colabs">
+      <div class="toolbar">
+        <div class="search">
+          <input id="searchInput" type="search" placeholder="Buscar por matrícula, nome, cargo..." />
+          <span class="hint">Dica: clique no armário para editar</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="btnAdd">+ Novo colaborador</button>
+          <button class="btn btn-ghost" id="btnClearFilters">Limpar busca</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Admissão</th>
+              <th>Cargo</th>
+              <th>Armário</th>
+              <th>Chave entregue em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="footer-note">
+        <span class="muted">Os dados ficam salvos no seu navegador (LocalStorage). Use Exportar para backup.</span>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-lockers">
+      <div class="toolbar">
+        <div class="search">
+          <input id="lockerFilter" type="search" placeholder="Filtrar disponíveis (ex: 42, 1-50, 2xx)..." />
+          <span class="hint">Mostra apenas armários livres</span>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="btnCopyFree">Copiar lista</button>
+        </div>
+      </div>
+
+      <div class="lockers">
+        <div class="lockers-head">
+          <div class="lockers-title">Armários disponíveis</div>
+          <div class="lockers-sub" id="freeSummary"></div>
+        </div>
+        <div id="freeGrid" class="free-grid"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-import">
+      <div class="cards">
+        <div class="card">
+          <h3>Importar XML</h3>
+          <p class="muted">
+            Se você tiver um XML com colaboradores (Cadastro, Nome, Admissão, Cargo, Numero do armario),
+            dá pra importar aqui. Se a matrícula já existir, o app atualiza os dados.
+          </p>
+          <input type="file" id="xmlFile" accept=".xml,text/xml,application/xml" />
+          <div class="row">
+            <button class="btn" id="btnImportXml">Importar XML</button>
+          </div>
+          <p class="muted small">Observação: a importação não apaga seus dados atuais; apenas mescla.</p>
+        </div>
+
+        <div class="card">
+          <h3>Exportar</h3>
+          <p class="muted">Faça backup dos dados atuais em JSON (recomendado) ou exporte XML.</p>
+          <div class="row">
+            <button class="btn" id="btnExportJson">Baixar JSON</button>
+            <button class="btn btn-ghost" id="btnExportXml">Baixar XML</button>
+          </div>
+        </div>
+
+        <div class="card danger">
+          <h3>Reset</h3>
+          <p class="muted">Apaga os dados salvos no navegador e volta para a base inicial (do seu arquivo).</p>
+          <div class="row">
+            <button class="btn btn-danger" id="btnReset">Resetar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-config">
+      <div class="cards">
+        <div class="card">
+          <h3>Total de armários</h3>
+          <p class="muted">Por padrão está em 300. Se mudar, a lista de disponíveis e validações seguem o novo total.</p>
+          <div class="row">
+            <input type="number" id="totalInput" min="1" max="5000" />
+            <button class="btn" id="btnSaveTotal">Salvar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Importar backup (JSON)</h3>
+          <p class="muted">Restaure um backup exportado anteriormente.</p>
+          <input type="file" id="jsonFile" accept=".json,application/json" />
+          <div class="row">
+            <button class="btn" id="btnImportJson">Importar JSON</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal -->
+  <dialog id="modal">
+    <form method="dialog" class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Novo colaborador</div>
+        <button class="icon-btn" value="cancel" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <label>
+            <span>Matrícula (Cadastro)</span>
+            <input id="fCadastro" required />
+          </label>
+
+          <label>
+            <span>Nome</span>
+            <input id="fNome" required />
+          </label>
+
+          <label>
+            <span>Admissão</span>
+            <input id="fAdmissao" type="date" />
+          </label>
+
+          <label>
+            <span>Cargo</span>
+            <input id="fCargo" />
+          </label>
+
+          <label>
+            <span>Armário</span>
+            <select id="fArmario">
+              <option value="">(sem armário)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Chave entregue em</span>
+            <input id="fChave" type="date" />
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" value="cancel">Cancelar</button>
+        <button class="btn" id="btnSave" value="default">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
