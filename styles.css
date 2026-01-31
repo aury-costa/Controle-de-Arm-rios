@@ -265,6 +265,26 @@ body{
   font-family: var(--mono);
 }
 .free-item:hover{ border-color: rgba(52,211,153,.55); }
+.free-item{ cursor:pointer; user-select:none; }
+.free-item .mini{ display:block; margin-top:6px; font-family: var(--ui); font-size:11px; color: var(--muted); }
+.free-item .badge-line{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+.free-item.ocupado{
+  border:1px solid rgba(248,113,113,.32);
+  background: rgba(248,113,113,.08);
+}
+.free-item.ocupado:hover{ border-color: rgba(248,113,113,.55); }
+.free-item.livre{
+  border:1px solid rgba(52,211,153,.28);
+  background: rgba(52,211,153,.08);
+}
+.free-item.livre:hover{ border-color: rgba(52,211,153,.55); }
+
+tr.flash{
+  background: rgba(125,211,252,.10);
+  outline: 1px solid rgba(125,211,252,.35);
+  outline-offset: -2px;
+}
+
 
 dialog::backdrop{ background: rgba(0,0,0,.55); }
 .modal{
@@ -343,3 +363,6 @@ label input, label select{
 .tag.warn{ border-color: rgba(180,35,24,.35); background: rgba(180,35,24,.10); }
 
 .locker-pos-card{ margin-top: 16px; }
+
+.select{ height: 40px; border-radius: 12px; border:1px solid var(--line); background: rgba(16,26,46,.65); color: var(--text); padding: 0 10px; }
+.select:focus{ outline:none; box-shadow: 0 0 0 3px rgba(96,165,250,.25); border-color: rgba(96,165,250,.45); }

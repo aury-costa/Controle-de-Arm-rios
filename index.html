@@ -80,10 +80,16 @@
     <section class="panel" id="tab-lockers">
       <div class="toolbar">
         <div class="search">
-          <input id="lockerFilter" type="search" placeholder="Filtrar disponíveis (ex: 42, 1-50, 2xx)..." />
-          <span class="hint">Mostra apenas armários livres</span>
+          <input id="lockerFilter" type="search" placeholder="Filtrar (ex: 42, 1-50, 2xx)..." />
+          <span class="hint">Use o filtro ao lado para ver todos / livres / ocupados</span>
         </div>
         <div class="actions">
+          
+          <select id="lockerStatus" class="select">
+            <option value="all">Todos</option>
+            <option value="free">Livres</option>
+            <option value="used">Ocupados</option>
+          </select>
           <button class="btn btn-ghost" id="btnCopyFree">Copiar lista</button>
         </div>
       </div>

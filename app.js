@@ -330,6 +330,8 @@ function renderEmployees(){
     if(q && !hay.includes(q)) continue;
 
     const tr = document.createElement("tr");
+    tr.dataset.cadastro = e.cadastro;
+    tr.id = "row-" + encodeURIComponent(e.cadastro);
 
     tr.appendChild(tdText(e.cadastro));
     tr.appendChild(tdText(e.nome));
@@ -380,38 +382,116 @@ function renderEmployees(){
 
 function renderLockers(){
   const filter = parseLockerFilter(el("lockerFilter").value);
-  const free = getFreeLockers();
+  const mode = el("lockerStatus") ? el("lockerStatus").value : "free"; // all | free | used
+
+  const usedSet = getUsedLockers();
+  const freeList = getFreeLockers();
+  const usedList = Array.from(usedSet).sort((a,b)=>a-b);
+
+  let numbers = [];
+  if(mode === "all"){
+    for(let i=1;i<=state.totalLockers;i++) numbers.push(i);
+  }else if(mode === "used"){
+    numbers = usedList;
+  }else{
+    numbers = freeList;
+  }
+
   const grid = el("freeGrid");
   grid.innerHTML = "";
 
   let shown = 0;
 
-  for(const n of free){
-    let ok = true;
-    if(filter.type === "range") ok = (n >= filter.a && n <= filter.b);
-    else if(filter.type === "one") ok = (n === filter.n);
-    else if(filter.type === "prefix") ok = (Math.floor(n/100) === filter.p);
-    else if(filter.type === "text") ok = String(n).includes(filter.s);
-    if(!ok) continue;
+  const matches = (n)=>{
+    if(!filter || filter.type === "all") return true;
+    if(filter.type === "range") return (n >= filter.a && n <= filter.b);
+    if(filter.type === "one") return (n === filter.n);
+    if(filter.type === "prefix") return (Math.floor(n/100) === filter.p);
+    if(filter.type === "text") return String(n).includes(filter.s);
+    return true;
+  };
+
+  const findEmpByLocker = (n)=>{
+    return state.employees.find(e => Number.isFinite(e.armario) && e.armario === n) || null;
+  };
+
+  for(const n of numbers){
+    if(!matches(n)) continue;
+
+    const emp = (mode === "free") ? null : findEmpByLocker(n);
+    const isUsed = (mode === "used") ? true : (mode === "all" ? usedSet.has(n) : false);
+    const position = lockerPosition(n);
 
     const card = document.createElement("div");
-    card.className = "locker";
+    card.className = "free-item " + (isUsed ? "ocupado" : "livre");
+    card.title = isUsed
+      ? `OCUPADO • ${position}
+${emp?.nome || "—"} (${emp?.cadastro || ""})`
+      : `LIVRE • ${position}
+Clique para copiar o número`;
 
     const num = document.createElement("div");
-    num.className = "locker-num";
     num.textContent = String(n);
 
-    const pos = document.createElement("div");
-    pos.className = "locker-pos";
-    pos.appendChild(tagPos(lockerPosition(n)));
+    const badgeLine = document.createElement("div");
+    badgeLine.className = "badge-line";
+
+    const statusTag = document.createElement("span");
+    statusTag.className = "tag " + (isUsed ? "warn" : "ok");
+    statusTag.textContent = isUsed ? "OCUPADO" : "LIVRE";
+
+    badgeLine.appendChild(statusTag);
+    badgeLine.appendChild(tagPos(position));
 
     card.appendChild(num);
-    card.appendChild(pos);
+    card.appendChild(badgeLine);
+
+    if(isUsed){
+      const mini = document.createElement("span");
+      mini.className = "mini";
+      mini.textContent = emp ? `${emp.nome} • ${emp.cadastro}` : "—";
+      card.appendChild(mini);
+    }
+
+    card.addEventListener("click", async ()=>{
+      if(isUsed && emp){
+        // ir direto pro colaborador + abrir edição
+        switchTab("colabs");
+        el("searchInput").value = emp.cadastro;
+        renderEmployees();
+        setTimeout(()=>{
+          const row = el("row-" + encodeURIComponent(emp.cadastro));
+          if(row){
+            row.classList.add("flash");
+            row.scrollIntoView({behavior:"smooth", block:"center"});
+            setTimeout(()=> row.classList.remove("flash"), 1800);
+          }
+          openModal(emp);
+        }, 80);
+      }else{
+        // livre: copiar número
+        try{
+          await navigator.clipboard.writeText(String(n));
+          showToast(`Armário ${n} copiado. (Livre • ${position})`);
+        }catch{
+          showToast(`Armário ${n} (Livre • ${position})`);
+        }
+      }
+    });
+
     grid.appendChild(card);
     shown++;
   }
 
-  el("freeSummary").textContent = `${shown} mostrando • ${free.length} disponíveis no total`;
+  const freeCount = freeList.length;
+  const usedCount = usedSet.size;
+  const total = state.totalLockers;
+
+  const labelMode = mode === "all" ? "no total" : (mode === "used" ? "ocupados" : "livres");
+  el("freeSummary").textContent = `${shown} mostrando • ${freeCount} livres • ${usedCount} ocupados • ${total} no total (${labelMode})`;
+
+  // guardar última lista visível (para botão copiar)
+  state._lastLockerVisible = Array.from(grid.querySelectorAll(".free-item > div:first-child")).map(d=>d.textContent);
 }
 
 function buildLockerOptions(selected){
@@ -501,6 +581,7 @@ el("btnClearFilters").addEventListener("click", ()=>{
   renderEmployees();
 });
 el("lockerFilter").addEventListener("input", renderLockers);
+if(el("lockerStatus")) el("lockerStatus").addEventListener("change", renderLockers);
 
 // ===== Locker position override (Cima/Baixo) =====
 el("btnSavePos").addEventListener("click", async ()=>{
@@ -679,14 +760,20 @@ el("btnSaveSplit").addEventListener("click", async ()=>{
 
 // ===== Copy free list =====
 el("btnCopyFree").addEventListener("click", async ()=>{
-  const free = getFreeLockers();
-  const txt = free.join(", ");
+  // copia os números atualmente visíveis na aba Armários
+  const grid = el("freeGrid");
+  const nums = Array.from(grid.querySelectorAll(".free-item > div:first-child")).map(d=>d.textContent).filter(Boolean);
+  const txt = nums.join(", ");
+  if(!txt){
+    showToast("Nada para copiar.");
+    return;
+  }
   try{
     await navigator.clipboard.writeText(txt);
     showToast("Lista copiada.");
   }catch{
-    downloadFile("armarios-disponiveis.txt", txt, "text/plain");
-    showToast("Não consegui copiar — gerei um TXT.");
+    downloadFile("armarios-visiveis.txt", txt);
+    showToast("Baixei um .txt com a lista.");
   }
 });
 
