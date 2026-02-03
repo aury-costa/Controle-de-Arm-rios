@@ -111,7 +111,19 @@
             </select>
             <button class="btn" id="btnSavePos">Salvar posição</button>
           </div>
+        
+        <div class="card locker-keys-card">
+          <h3>Chaves por armário (cópias)</h3>
+          <p class="muted small">Defina quantas cópias de chave existem para um armário. Padrão: 1. O app calcula automaticamente quantas estão disponíveis.</p>
+          <div class="row">
+            <input type="number" id="keyNumber" min="1" placeholder="Nº do armário" />
+            <input type="number" id="keyTotal" min="1" max="99" placeholder="Total de chaves" />
+            <button class="btn" id="btnSaveKeys">Salvar chaves</button>
+            <button class="btn btn-ghost" id="btnAddCopy">+1 cópia</button>
+          </div>
         </div>
+
+</div>
 
         <div id="freeGrid" class="free-grid"></div>
       </div>

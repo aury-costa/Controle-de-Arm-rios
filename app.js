@@ -45,6 +45,7 @@ let state = {
   totalLockers: 300,
   defaultSplit: 150, // 1..X = BAIXO, X+1..total = CIMA (padrão)
   lockerPositions: {}, // override por número: { "42": "CIMA" }
+  lockerKeys: {}, // override por número: { "42": 2 } (total de chaves)
   employees: [], // [{cadastro, nome, admissao, cargo, armario, chaveEntregueEm}]
 };
 
@@ -102,6 +103,35 @@ function lockerPosition(n){
   const split = Number.isFinite(state.defaultSplit) ? state.defaultSplit : Math.floor(state.totalLockers/2);
   return n <= split ? "BAIXO" : "CIMA";
 }
+
+// ===== Chaves (cópias) por armário =====
+function totalKeysForLocker(n){
+  const v = state.lockerKeys?.[String(n)];
+  const num = Number(v);
+  return Number.isFinite(num) && num > 0 ? Math.floor(num) : 1; // padrão: 1 chave
+}
+
+function keysInUseForLocker(n, excludeCadastro){
+  // Cada armário é único por colaborador, mas a chave pode ou não ter sido entregue.
+  // Conta colaboradores com este armário e chaveEntregueEm preenchido.
+  let count = 0;
+  for(const e of state.employees){
+    if(excludeCadastro && String(e.cadastro) === String(excludeCadastro)) continue;
+    if(Number.isFinite(e.armario) && e.armario === n && e.chaveEntregueEm){
+      count++;
+    }
+  }
+  return count;
+}
+
+function keysAvailableForLocker(n, excludeCadastro){
+  return totalKeysForLocker(n) - keysInUseForLocker(n, excludeCadastro);
+}
+
+async function saveLockerKeys(num, total){
+  await set(ref(db, `lockerKeys/${num}`), total);
+}
+
 
 function tagPos(pos){
   const span = document.createElement("span");
@@ -173,6 +203,12 @@ function startRealtime(){
   // locker positions override
   onValue(ref(db, "lockerPositions"), (snap)=>{
     state.lockerPositions = snap.val() || {};
+    renderAll();
+  });
+
+  // locker keys (total de cópias por armário)
+  onValue(ref(db, "lockerKeys"), (snap)=>{
+    state.lockerKeys = snap.val() || {};
     renderAll();
   });
 
@@ -424,10 +460,14 @@ function renderLockers(){
 
     const card = document.createElement("div");
     card.className = "free-item " + (isUsed ? "ocupado" : "livre");
+    const availKeysNow = keysAvailableForLocker(n);
+    if(availKeysNow <= 0) card.classList.add("sem-chave");
     card.title = isUsed
       ? `OCUPADO • ${position}
+Chaves: ${Math.max(0,(totalKeysForLocker(n)-keysInUseForLocker(n)))}/${totalKeysForLocker(n)} disponíveis
 ${emp?.nome || "—"} (${emp?.cadastro || ""})`
       : `LIVRE • ${position}
+Chaves: ${Math.max(0,(totalKeysForLocker(n)-keysInUseForLocker(n)))}/${totalKeysForLocker(n)} disponíveis
 Clique para copiar o número`;
 
     const num = document.createElement("div");
@@ -443,9 +483,19 @@ Clique para copiar o número`;
     badgeLine.appendChild(statusTag);
     badgeLine.appendChild(tagPos(position));
 
+    // chaves
+    const totalKeys = totalKeysForLocker(n);
+    const inUseKeys = keysInUseForLocker(n);
+    const availKeys = totalKeys - inUseKeys;
+
+    const keyTag = document.createElement("span");
+    keyTag.className = "tag " + (availKeys <= 0 ? "danger" : "info");
+    keyTag.textContent = `CHAVES ${Math.max(0,availKeys)}/${totalKeys}`;
+
+    badgeLine.appendChild(keyTag);
+
     card.appendChild(num);
     card.appendChild(badgeLine);
-
     if(isUsed){
       const mini = document.createElement("span");
       mini.className = "mini";
@@ -508,7 +558,10 @@ function buildLockerOptions(selected){
     const inUse = used.has(i) && i !== prev;
     const opt = document.createElement("option");
     opt.value = String(i);
-    opt.textContent = `${i} • ${lockerPosition(i)}`;
+    const totalK = totalKeysForLocker(i);
+    const inUseK = keysInUseForLocker(i);
+    const availK = totalK - inUseK;
+    opt.textContent = `${i} • ${lockerPosition(i)} • chaves ${Math.max(0,availK)}/${totalK}`;
     if(inUse){
       opt.disabled = true;
       opt.textContent += " (ocupado)";
@@ -564,6 +617,16 @@ el("btnSave").addEventListener("click", async (ev)=>{
 
   const prevLocker = editing?.armario ?? null;
 
+  // validação de chaves (se marcou entrega)
+  if(armario != null && chave){
+    const exclude = editing?.cadastro ?? null;
+    const avail = keysAvailableForLocker(armario, exclude);
+    if(avail <= 0){
+      showToast(`Sem chave disponível para o armário ${armario}. Faça uma cópia antes ou aumente o total de chaves.`);
+      return;
+    }
+  }
+
   const emp = { cadastro, nome, admissao, cargo, armario, chaveEntregueEm: chave };
 
   try{
@@ -599,6 +662,50 @@ el("btnSavePos").addEventListener("click", async ()=>{
   }
 });
 
+// ===== Chaves por armário (Total de cópias) =====
+el("btnSaveKeys").addEventListener("click", async ()=>{
+  const n = Number(el("keyNumber").value);
+  const total = Number(el("keyTotal").value);
+  if(!Number.isFinite(n) || n < 1 || n > state.totalLockers){
+    showToast("Número de armário inválido.");
+    return;
+  }
+  if(!Number.isFinite(total) || total < 1 || total > 99){
+    showToast("Total de chaves inválido (1-99).");
+    return;
+  }
+  // não permite reduzir abaixo das chaves em uso
+  const inUse = keysInUseForLocker(n);
+  if(total < inUse){
+    showToast(`Não dá: já existem ${inUse} chave(s) em uso neste armário.`);
+    return;
+  }
+  try{
+    await saveLockerKeys(n, Math.floor(total));
+    showToast(`Armário ${n}: total de chaves = ${Math.floor(total)}`);
+  }catch(err){
+    showToast("Erro ao salvar chaves: " + (err?.message || err));
+  }
+});
+
+el("btnAddCopy").addEventListener("click", async ()=>{
+  const n = Number(el("keyNumber").value);
+  if(!Number.isFinite(n) || n < 1 || n > state.totalLockers){
+    showToast("Informe o número do armário para adicionar cópia.");
+    return;
+  }
+  const current = totalKeysForLocker(n);
+  const next = Math.min(99, current + 1);
+  try{
+    await saveLockerKeys(n, next);
+    el("keyTotal").value = next;
+    showToast(`Cópia adicionada. Armário ${n}: total = ${next}`);
+  }catch(err){
+    showToast("Erro ao adicionar cópia: " + (err?.message || err));
+  }
+});
+
+
 // ===== Importar / Exportar =====
 function downloadFile(filename, content, mime){
   const blob = new Blob([content], { type: mime });
@@ -616,6 +723,7 @@ el("btnExportJson").addEventListener("click", ()=>{
     exportedAt: new Date().toISOString(),
     config: { totalLockers: state.totalLockers, defaultSplit: state.defaultSplit },
     lockerPositions: state.lockerPositions || {},
+    lockerKeys: state.lockerKeys || {},
     employees: state.employees
   };
   downloadFile("armarios-backup.json", JSON.stringify(payload, null, 2), "application/json");
@@ -663,6 +771,17 @@ el("btnImportJson").addEventListener("click", async ()=>{
         updates[`lockerPositions/${k}`] = (v === "CIMA") ? "CIMA" : "BAIXO";
       }
     }
+
+    if(data?.lockerKeys && typeof data.lockerKeys === "object"){
+      for(const [k,v] of Object.entries(data.lockerKeys)){
+        const n = Math.floor(Number(k));
+        const total = Math.floor(Number(v));
+        if(!Number.isFinite(n) || n < 1) continue;
+        if(!Number.isFinite(total) || total < 1) continue;
+        updates[`lockerKeys/${n}`] = total;
+      }
+    }
+
     if(Array.isArray(data?.employees)){
       for(const e of data.employees){
         const cadastro = String(e.cadastro ?? "").trim();

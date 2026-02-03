@@ -19,3 +19,6 @@ Dica
 
 Observação
 - Este app é 100% local/offline. Para usar com link (web), basta hospedar essa pasta (por exemplo GitHub Pages, Netlify, Vercel ou servidor interno).
+
+
+v4: Controle de cópias de chaves por armário (lockerKeys), com validação na entrega e visual no painel.
