@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Armários • Colaboradores</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Controle de Armários</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
   <header class="topbar">
@@ -12,51 +12,48 @@
       <div class="logo">🔐</div>
       <div>
         <div class="title">Controle de Armários</div>
-        <div class="subtitle">Mapeie colaboradores ↔ armário e controle disponibilidade</div>
-      </div>
-        <div class="conn" id="connStatus">Conectando…</div>
+        <div class="subtitle">Firebase Realtime Database • tempo real</div>
       </div>
     </div>
-
-    <div class="stats">
-      <div class="pill">
-        <div class="pill-label">Total</div>
-        <div class="pill-value" id="totalLockers">300</div>
-      </div>
-      <div class="pill">
-        <div class="pill-label">Ocupados</div>
-        <div class="pill-value" id="usedLockers">0</div>
-      </div>
-      <div class="pill pill-ok">
-        <div class="pill-label">Disponíveis</div>
-        <div class="pill-value" id="freeLockers">300</div>
-      </div>
+    <div class="status">
+      <span id="connDot" class="dot"></span>
+      <span id="connText">Conectando…</span>
     </div>
   </header>
 
   <main class="container">
+    <div id="globalAlert" class="alert hidden" role="alert">
+      <strong>⚠️ Atenção:</strong> existem armários sem cópias de chave disponíveis (0 disponíveis).
+      <button id="btnIrRisco" class="btn small ghost">Ver relatório</button>
+    </div>
+
     <nav class="tabs">
-      <button class="tab active" data-tab="colabs">Colaboradores</button>
-      <button class="tab" data-tab="lockers">Armários disponíveis</button>
-      <button class="tab" data-tab="import">Importar/Exportar</button>
-      <button class="tab" data-tab="config">Config</button>
+      <button class="tab active" data-tab="tabColabs">👥 Colaboradores</button>
+      <button class="tab" data-tab="tabArmarios">🧰 Armários</button>
+      <button class="tab" data-tab="tabHistorico">📜 Histórico</button>
+      <button class="tab" data-tab="tabConfig">⚙️ Config</button>
     </nav>
 
-    <section class="panel active" id="tab-colabs">
-      <div class="toolbar">
-        <div class="search">
-          <input id="searchInput" type="search" placeholder="Buscar por matrícula, nome, cargo..." />
-          <span class="hint">Dica: clique no armário para editar</span>
+    <section id="tabColabs" class="panel">
+      <div class="panelHeader">
+        <div>
+          <h2>Colaboradores</h2>
+          <div class="muted" id="colabStats">—</div>
         </div>
-
-        <div class="actions">
-          <button class="btn" id="btnAdd">+ Novo colaborador</button>
-          <button class="btn btn-ghost" id="btnClearFilters">Limpar busca</button>
+        <div class="panelActions">
+          <input id="qColab" class="input" placeholder="Buscar por matrícula, nome, cargo…"/>
+          <button id="btnNovo" class="btn primary">+ Novo</button>
+          <button id="btnExportJSON" class="btn">📦 Backup JSON</button>
+          <button id="btnImportJSON" class="btn ghost">Importar JSON</button>
+          <input id="fileImportJSON" type="file" accept="application/json" hidden/>
+          <button id="btnExportXML" class="btn">📄 Exportar XML</button>
+          <button id="btnImportXML" class="btn ghost">Importar XML</button>
+          <input id="fileImportXML" type="file" accept=".xml,application/xml,text/xml" hidden/>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table class="grid">
+      <div class="tableWrap">
+        <table class="table">
           <thead>
             <tr>
               <th>Matrícula</th>
@@ -65,191 +62,187 @@
               <th>Cargo</th>
               <th>Armário</th>
               <th>Posição</th>
-              <th>Chave entregue em</th>
-              <th></th>
+              <th>Chave entregue</th>
+              <th style="width:1%">Ações</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbodyColabs"></tbody>
         </table>
-      </div>
-      <div class="footer-note">
-        <span class="muted">Os dados ficam salvos no Firebase (tempo real). Use Exportar para backup.</span>
       </div>
     </section>
 
-    <section class="panel" id="tab-lockers">
-      <div class="toolbar">
-        <div class="search">
-          <input id="lockerFilter" type="search" placeholder="Filtrar (ex: 42, 1-50, 2xx)..." />
-          <span class="hint">Use o filtro ao lado para ver todos / livres / ocupados</span>
+    <section id="tabArmarios" class="panel hidden">
+      <div class="panelHeader">
+        <div>
+          <h2>Armários</h2>
+          <div class="muted" id="lockerStats">—</div>
         </div>
-        <div class="actions">
-          
-          <select id="lockerStatus" class="select">
+        <div class="panelActions">
+          <select id="fStatus" class="input">
             <option value="all">Todos</option>
             <option value="free">Livres</option>
-            <option value="used">Ocupados</option>
+            <option value="busy">Ocupados</option>
           </select>
-          <button class="btn btn-ghost" id="btnCopyFree">Copiar lista</button>
+          <select id="fPos" class="input">
+            <option value="all">Cima+Baixo</option>
+            <option value="CIMA">Só CIMA</option>
+            <option value="BAIXO">Só BAIXO</option>
+          </select>
+          <input id="qLocker" class="input" placeholder="Ir para nº (ex: 42)"/>
+          <button id="btnCopiarVisiveis" class="btn ghost">📋 Copiar lista visível</button>
         </div>
       </div>
 
-      <div class="lockers">
-        <div class="lockers-head">
-          <div class="lockers-title">Armários disponíveis</div>
-          <div class="lockers-sub" id="freeSummary"></div>
-        </div>
-        
-        <div class="card locker-pos-card">
-          <h3>Posição (Cima/Baixo)</h3>
-          <p class="muted small">Defina a posição de um armário pelo número. Se não definir, o app usa a regra padrão da aba Config.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Configurar posição (CIMA/BAIXO) por número</h3>
           <div class="row">
-            <input type="number" id="posNumber" min="1" placeholder="Nº do armário" />
-            <select id="posValue">
+            <input id="posNum" class="input" type="number" min="1" placeholder="Número do armário"/>
+            <select id="posVal" class="input">
               <option value="BAIXO">BAIXO</option>
               <option value="CIMA">CIMA</option>
             </select>
-            <button class="btn" id="btnSavePos">Salvar posição</button>
+            <button id="btnSalvarPos" class="btn">Salvar</button>
           </div>
-        
-        <div class="card locker-keys-card">
+          <div class="muted">Se não configurar um número, vale a regra padrão da aba Config.</div>
+        </div>
+
+        <div class="card">
           <h3>Chaves por armário (cópias)</h3>
-          <p class="muted small">Defina quantas cópias de chave existem para um armário. Padrão: 1. O app calcula automaticamente quantas estão disponíveis.</p>
           <div class="row">
-            <input type="number" id="keyNumber" min="1" placeholder="Nº do armário" />
-            <input type="number" id="keyTotal" min="1" max="99" placeholder="Total de chaves" />
-            <button class="btn" id="btnSaveKeys">Salvar chaves</button>
-            <button class="btn btn-ghost" id="btnAddCopy">+1 cópia</button>
+            <input id="keyNum" class="input" type="number" min="1" placeholder="Número do armário"/>
+            <input id="keyTotal" class="input" type="number" min="1" placeholder="Total de chaves (cópias)"/>
+            <button id="btnSalvarChaves" class="btn">Salvar</button>
+            <button id="btnMaisCopia" class="btn ghost">+1 cópia</button>
           </div>
+          <div class="muted">Padrão: 1 chave por armário se não configurar.</div>
         </div>
+      </div>
 
-</div>
+      <div class="card">
+        <h3>Mapa de armários</h3>
+        <div class="muted">Clique em um armário <b>ocupado</b> para ir direto ao colaborador. Clique em um armário <b>livre</b> para copiar o número.</div>
+        <div id="lockerGrid" class="lockerGrid"></div>
+      </div>
 
-        <div id="freeGrid" class="free-grid"></div>
+      <div class="card">
+        <h3>Relatório: armários em risco</h3>
+        <div class="muted">“Risco” = armário com <b>somente 1 chave</b> (1 cópia total).</div>
+        <ul id="riskList" class="list"></ul>
       </div>
     </section>
 
-    <section class="panel" id="tab-import">
-      <div class="cards">
-        <div class="card">
-          <h3>Importar XML</h3>
-          <p class="muted">
-            Se você tiver um XML com colaboradores (Cadastro, Nome, Admissão, Cargo, Numero do armario),
-            dá pra importar aqui. Se a matrícula já existir, o app atualiza os dados.
-          </p>
-          <input type="file" id="xmlFile" accept=".xml,text/xml,application/xml" />
-          <div class="row">
-            <button class="btn" id="btnImportXml">Importar XML</button>
-          </div>
-          <p class="muted small">Observação: a importação não apaga seus dados atuais; apenas mescla.</p>
+    <section id="tabHistorico" class="panel hidden">
+      <div class="panelHeader">
+        <div>
+          <h2>Histórico de chaves</h2>
+          <div class="muted">Registros de entrega, devolução e cópias.</div>
         </div>
-
-        <div class="card">
-          <h3>Exportar</h3>
-          <p class="muted">Faça backup dos dados atuais em JSON (recomendado) ou exporte XML.</p>
-          <div class="row">
-            <button class="btn" id="btnExportJson">Baixar JSON</button>
-            <button class="btn btn-ghost" id="btnExportXml">Baixar XML</button>
-          </div>
-        </div>
-
-        <div class="card danger">
-          <h3>Reset</h3>
-          <p class="muted">Apaga os dados salvos no navegador e volta para a base inicial (do seu arquivo).</p>
-          <div class="row">
-            <button class="btn btn-danger" id="btnReset">Resetar</button>
-          </div>
+        <div class="panelActions">
+          <button id="btnExportHist" class="btn ghost">📤 Exportar (CSV)</button>
+          <button id="btnLimparHist" class="btn danger ghost">Limpar histórico</button>
         </div>
       </div>
+      <div class="tableWrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Ação</th>
+              <th>Armário</th>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Detalhe</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyHist"></tbody>
+        </table>
+      </div>
+      <div class="muted">Dica: para segurança, ajuste regras do Firebase e use autenticação se necessário.</div>
     </section>
 
-    <section class="panel" id="tab-config">
-      <div class="cards">
-        
+    <section id="tabConfig" class="panel hidden">
+      <div class="grid2">
         <div class="card">
-          <h3>Regra padrão Cima/Baixo</h3>
-          <p class="muted">Se não houver configuração por número, o app usa esta regra:</p>
-          <p class="muted small"><b>1 até X = BAIXO</b> • <b>X+1 até Total = CIMA</b></p>
+          <h3>Configurações gerais</h3>
           <div class="row">
-            <input type="number" id="splitInput" min="0" />
-            <button class="btn" id="btnSaveSplit">Salvar</button>
+            <label class="lbl">Total de armários</label>
+            <input id="cfgTotal" class="input" type="number" min="1"/>
           </div>
-        </div>
-
-<div class="card">
-          <h3>Total de armários</h3>
-          <p class="muted">Por padrão está em 300. Se mudar, a lista de disponíveis e validações seguem o novo total.</p>
           <div class="row">
-            <input type="number" id="totalInput" min="1" max="5000" />
-            <button class="btn" id="btnSaveTotal">Salvar</button>
+            <label class="lbl">Regra padrão: até este nº é BAIXO</label>
+            <input id="cfgBaixoAte" class="input" type="number" min="0"/>
           </div>
+          <div class="row">
+            <button id="btnSalvarConfig" class="btn primary">Salvar configurações</button>
+          </div>
+          <div class="muted">Ex.: BAIXO até 150 → 1..150 BAIXO, 151..Total CIMA.</div>
         </div>
 
         <div class="card">
-          <h3>Importar backup (JSON)</h3>
-          <p class="muted">Restaure um backup exportado anteriormente.</p>
-          <input type="file" id="jsonFile" accept=".json,application/json" />
-          <div class="row">
-            <button class="btn" id="btnImportJson">Importar JSON</button>
-          </div>
+          <h3>Ajuda rápida</h3>
+          <ol class="muted">
+            <li>Cadastre/importe colaboradores na aba <b>Colaboradores</b>.</li>
+            <li>Atribua armário e entregue/devolva chaves no formulário do colaborador.</li>
+            <li>Configure cópias (total de chaves) por armário na aba <b>Armários</b>.</li>
+            <li>O alerta aparece se algum armário ficar com <b>0 chaves disponíveis</b>.</li>
+          </ol>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Modal -->
-  <dialog id="modal">
-    <form method="dialog" class="modal">
-      <div class="modal-head">
-        <div class="modal-title" id="modalTitle">Novo colaborador</div>
-        <button class="icon-btn" value="cancel" aria-label="Fechar">✕</button>
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <h3 id="modalTitle">Colaborador</h3>
+        <button id="btnCloseModal" class="btn ghost small">✕</button>
       </div>
 
-      <div class="modal-body">
-        <div class="form-grid">
-          <label>
-            <span>Matrícula (Cadastro)</span>
-            <input id="fCadastro" required />
-          </label>
-
-          <label>
-            <span>Nome</span>
-            <input id="fNome" required />
-          </label>
-
-          <label>
-            <span>Admissão</span>
-            <input id="fAdmissao" type="date" />
-          </label>
-
-          <label>
-            <span>Cargo</span>
-            <input id="fCargo" />
-          </label>
-
-          <label>
-            <span>Armário</span>
-            <select id="fArmario">
-              <option value="">(sem armário)</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Chave entregue em</span>
-            <input id="fChave" type="date" />
-          </label>
+      <form id="formColab" class="form">
+        <div class="grid2">
+          <div>
+            <label class="lbl">Matrícula (Cadastro)</label>
+            <input id="fMat" class="input" required/>
+          </div>
+          <div>
+            <label class="lbl">Nome</label>
+            <input id="fNome" class="input" required/>
+          </div>
+          <div>
+            <label class="lbl">Admissão</label>
+            <input id="fAdm" class="input" type="date"/>
+          </div>
+          <div>
+            <label class="lbl">Cargo</label>
+            <input id="fCargo" class="input"/>
+          </div>
+          <div>
+            <label class="lbl">Armário</label>
+            <select id="fArmario" class="input"></select>
+            <div class="muted" id="armInfo">—</div>
+          </div>
+          <div>
+            <label class="lbl">Chave entregue em</label>
+            <input id="fChaveEnt" class="input" type="date"/>
+            <div class="row">
+              <button id="btnEntregarAgora" type="button" class="btn ghost">🔑 Entregar agora</button>
+              <button id="btnDevolver" type="button" class="btn ghost">↩️ Devolver</button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="modal-actions">
-        <button class="btn btn-ghost" value="cancel">Cancelar</button>
-        <button class="btn" id="btnSave" value="default">Salvar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="row between">
+          <div class="muted" id="editHint">—</div>
+          <div class="row">
+            <button id="btnExcluir" type="button" class="btn danger ghost hidden">Excluir</button>
+            <button class="btn primary" type="submit">Salvar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
