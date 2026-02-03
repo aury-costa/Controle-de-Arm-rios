@@ -1,24 +1,24 @@
-CONTROLE DE ARMÁRIOS – v6 (COMPLETO)
+Controle de Armários (offline)
+================================
 
-Recursos:
-- CRUD de colaboradores (matrícula, nome, admissão, cargo, armário, chave entregue)
-- Armários 1..N (configurável) com regra padrão CIMA/BAIXO + override por número
-- Mapa visual: LIVRE/OCUPADO + posição + chaves (disponíveis/total)
-- Filtro: todos / livres / ocupados + filtro por CIMA/BAIXO
-- Clique no armário ocupado -> abre colaborador; clique no livre -> copia o número
-- Chaves por armário (cópias): totalChaves, chavesEmUso; +1 cópia
-- Histórico de chaves (entrega/devolução/cópia/ajuste) em /historicoChaves
-- Alerta automático: existe armário com 0 chaves disponíveis
-- Relatório de risco: armários com 1 chave (totalChaves == 1)
-- Backup JSON e import JSON (sobrescreve)
-- Export XML e import XML (mescla por matrícula)
+Como usar
+- Abra o arquivo index.html no navegador (Chrome/Edge/Firefox).
+- Os dados ficam salvos no navegador (LocalStorage).
+- Para backup: aba "Importar/Exportar" -> "Baixar JSON".
 
-Firebase (Realtime Database):
-- /config
-- /posicoes/{num}
-- /armarios/{num}
-- /colaboradores/{matricula}
-- /historicoChaves/{pushId}
+Recursos
+- Cadastro/edição/exclusão de colaboradores (matrícula, nome, admissão, cargo).
+- Atribuição de armário (1..Total) com validação para não repetir.
+- Campo "Chave entregue em" (data).
+- Aba "Armários disponíveis" mostra quantidade e lista; ao atribuir, o armário some da lista.
+- Importar XML (mescla por matrícula) e exportar XML/JSON.
+- Config: alterar Total de armários, importar backup JSON, reset.
 
-Observação:
-- Este app não usa autenticação. Para produção, configure regras e Auth.
+Dica
+- Se você mudar de computador/celular, use o backup JSON para restaurar.
+
+Observação
+- Este app é 100% local/offline. Para usar com link (web), basta hospedar essa pasta (por exemplo GitHub Pages, Netlify, Vercel ou servidor interno).
+
+
+v4: Controle de cópias de chaves por armário (lockerKeys), com validação na entrega e visual no painel.
