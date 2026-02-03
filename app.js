@@ -133,7 +133,7 @@ async function saveLockerKeys(num, total){
   await set(ref(db, `lockerKeys/${num}`), total);
 }
 
-async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueEm }){
+async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueEm, obs, totalAntes, totalDepois, deltaTotal }){
   // não falha o fluxo principal se o log falhar
   try{
     const payload = {
@@ -142,7 +142,11 @@ async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueE
       armario: armario == null ? null : Number(armario),
       cadastro: String(cadastro || ""),
       nome: String(nome || ""),
-      chaveEntregueEm: chaveEntregueEm ?? null
+      chaveEntregueEm: chaveEntregueEm ?? null,
+      obs: obs ? String(obs) : "",
+      totalAntes: Number.isFinite(totalAntes) ? Number(totalAntes) : null,
+      totalDepois: Number.isFinite(totalDepois) ? Number(totalDepois) : null,
+      deltaTotal: Number.isFinite(deltaTotal) ? Number(deltaTotal) : null
     };
     await push(ref(db, "historicoChaves"), payload);
   }catch(err){
@@ -251,6 +255,10 @@ function startRealtime(){
         cadastro: String(h.cadastro || ""),
         nome: String(h.nome || ""),
         chaveEntregueEm: h.chaveEntregueEm ?? null,
+        obs: String(h.obs || ""),
+        totalAntes: (h.totalAntes == null ? null : Number(h.totalAntes)),
+        totalDepois: (h.totalDepois == null ? null : Number(h.totalDepois)),
+        deltaTotal: (h.deltaTotal == null ? null : Number(h.deltaTotal)),
       });
     }
     arr.sort((a,b)=> (b.ts||0) - (a.ts||0));
@@ -284,6 +292,8 @@ function startRealtime(){
       if(e.armario != null && (e.armario < 1 || e.armario > state.totalLockers)) e.armario = null;
     }
     state.employees = arr;
+    // atualiza opções do seletor do "Controle rápido de chaves"
+    refreshKeyEvtEmpOptions();
     renderAll();
   }, (err)=>{
     showToast("Erro Firebase (employees): " + (err?.message || err));
@@ -381,6 +391,23 @@ function updateStats(){
   el("totalLockers").textContent = String(state.totalLockers);
   el("usedLockers").textContent = String(used);
   el("freeLockers").textContent = String(free);
+
+  // alerta compacto no topo: armários sem chave reserva (disponível = 0)
+  const zeroPill = document.getElementById("zeroKeysPill");
+  const zeroCountEl = document.getElementById("zeroKeysCount");
+  if(zeroPill && zeroCountEl){
+    const usedSet = getUsedLockers();
+    let zeroCount = 0;
+    for(const n of usedSet){
+      if(keysAvailableForLocker(n) <= 0) zeroCount++;
+    }
+    zeroCountEl.textContent = String(zeroCount);
+    zeroPill.classList.toggle("pulse", zeroCount > 0);
+    zeroPill.style.display = "";
+    zeroPill.title = zeroCount
+      ? `🔔 ${zeroCount} armário(s) sem chave reserva (disponível = 0).`
+      : "✅ Todos os armários têm ao menos 1 chave reserva disponível.";
+  }
 }
 
 function switchTab(name){
@@ -614,11 +641,12 @@ function renderRiskAndAlerts(){
     const availK = totalK - inUseK;
 
     if(totalK === 1) risk.push(i);
-    if(availK <= 0 && totalK > 0) zero.push(i);
+    // sem reserva quando disponível = 0 (todas em uso) OU quando total = 0
+    if((availK <= 0 && totalK > 0 && inUseK > 0) || totalK === 0) zero.push(i);
   }
 
   if(riskSummary) riskSummary.textContent = `${risk.length} armário(s) com 1 chave (risco).`;
-  if(zeroSummary) zeroSummary.textContent = `${zero.length} armário(s) com 0 chaves disponíveis (todas em uso).`;
+  if(zeroSummary) zeroSummary.textContent = `${zero.length} armário(s) sem chave reserva (disponível = 0) ou total = 0.`;
 
   const makeCard = (n, kind)=>{
     const div = document.createElement("div");
@@ -700,7 +728,11 @@ function renderHistory(){
   const rows = (state.historicoChaves || []).filter(h=>{
     if(!q) return true;
     const arm = h.armario == null ? "" : String(h.armario);
-    return normalize(arm).includes(q) || normalize(h.cadastro).includes(q) || normalize(h.nome).includes(q) || normalize(h.tipo).includes(q);
+    return normalize(arm).includes(q)
+      || normalize(h.cadastro).includes(q)
+      || normalize(h.nome).includes(q)
+      || normalize(h.tipo).includes(q)
+      || normalize(h.obs).includes(q);
   });
 
   for(const h of rows){
@@ -711,6 +743,7 @@ function renderHistory(){
     tr.appendChild(tdText(h.armario == null ? "" : String(h.armario)));
     tr.appendChild(tdText(h.cadastro));
     tr.appendChild(tdText(h.nome));
+    tr.appendChild(tdText(h.obs));
     body.appendChild(tr);
   }
 
@@ -826,8 +859,9 @@ el("btnSaveKeys").addEventListener("click", async ()=>{
     showToast("Número de armário inválido.");
     return;
   }
-  if(!Number.isFinite(total) || total < 1 || total > 99){
-    showToast("Total de chaves inválido (1-99).");
+  // permite 0 para representar "nenhuma chave física disponível" (ex.: chave perdida)
+  if(!Number.isFinite(total) || total < 0 || total > 99){
+    showToast("Total de chaves inválido (0-99).");
     return;
   }
   // não permite reduzir abaixo das chaves em uso
@@ -842,6 +876,157 @@ el("btnSaveKeys").addEventListener("click", async ()=>{
   }catch(err){
     showToast("Erro ao salvar chaves: " + (err?.message || err));
   }
+});
+
+// ===== Controle rápido de chaves (eventos) =====
+function todayISO(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function refreshKeyEvtEmpOptions(){
+  const sel = el("keyEvtEmp");
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = "<option value=\"\">(selecione)</option>";
+  const sorted = [...state.employees].sort((a,b)=> normalize(a.nome).localeCompare(normalize(b.nome)));
+  for(const e of sorted){
+    const opt = document.createElement("option");
+    opt.value = String(e.cadastro);
+    const arm = (e.armario != null && Number.isFinite(e.armario)) ? ` • Armário ${e.armario}` : "";
+    opt.textContent = `${e.nome} (${e.cadastro})${arm}`;
+    sel.appendChild(opt);
+  }
+  sel.value = current;
+}
+
+function clearKeyEvtForm(){
+  if(el("keyEvtLocker")) el("keyEvtLocker").value = "";
+  if(el("keyEvtType")) el("keyEvtType").value = "ENTREGOU";
+  if(el("keyEvtEmp")) el("keyEvtEmp").value = "";
+  if(el("keyEvtDate")) el("keyEvtDate").value = todayISO();
+  if(el("keyEvtObs")) el("keyEvtObs").value = "";
+}
+
+async function handleKeyEvtSave(){
+  const locker = Number(el("keyEvtLocker")?.value);
+  const tipo = String(el("keyEvtType")?.value || "");
+  const cadastro = String(el("keyEvtEmp")?.value || "");
+  const date = String(el("keyEvtDate")?.value || "") || todayISO();
+  const obs = String(el("keyEvtObs")?.value || "").trim();
+
+  if(!Number.isFinite(locker) || locker < 1 || locker > state.totalLockers){
+    showToast("Informe um número de armário válido.");
+    return;
+  }
+
+  // ações que precisam de colaborador
+  const needsEmp = (tipo === "ENTREGOU" || tipo === "DEVOLVEU" || tipo === "PERDEU");
+  if(needsEmp && !cadastro){
+    showToast("Selecione um colaborador.");
+    return;
+  }
+
+  const emp = cadastro ? state.employees.find(e=> String(e.cadastro) === cadastro) : null;
+  if(needsEmp && !emp){
+    showToast("Colaborador não encontrado (recarregue a página)." );
+    return;
+  }
+
+  // se for com colaborador, o armário precisa bater (evita bagunçar o índice)
+  if(needsEmp && (emp.armario == null || Number(emp.armario) !== locker)){
+    showToast("Esse colaborador não está com esse armário. Ajuste o armário do colaborador primeiro.");
+    return;
+  }
+
+  const totalAntes = totalKeysForLocker(locker);
+  let totalDepois = totalAntes;
+  let deltaTotal = 0;
+
+  try{
+    if(tipo === "COPIA_FEITA"){
+      totalDepois = Math.max(0, Math.floor(totalAntes) + 1);
+      deltaTotal = totalDepois - totalAntes;
+      await saveLockerKeys(locker, totalDepois);
+      await logHistoricoChave({ tipo, armario: locker, cadastro: "", nome: "", chaveEntregueEm: null, obs, totalAntes, totalDepois, deltaTotal });
+      showToast(`Armário ${locker}: cópia registrada (+1).`);
+    }
+
+    if(tipo === "ENTREGOU"){
+      const hadKey = !!emp.chaveEntregueEm;
+      if(!hadKey){
+        const avail = keysAvailableForLocker(locker);
+        if(avail <= 0){
+          showToast("Sem chave reserva disponível para entregar. Registre uma cópia primeiro.");
+          return;
+        }
+      }
+      const updated = { ...emp, chaveEntregueEm: date };
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({
+        tipo: hadKey ? "ENTREGOU (2ª via)" : "ENTREGOU",
+        armario: locker,
+        cadastro: updated.cadastro,
+        nome: updated.nome,
+        chaveEntregueEm: date,
+        obs: obs || (hadKey ? "2ª via" : "")
+      });
+      showToast(`Chave entregue para ${updated.nome}.`);
+    }
+
+    if(tipo === "DEVOLVEU"){
+      const updated = { ...emp, chaveEntregueEm: null };
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({ tipo: "DEVOLVEU", armario: locker, cadastro: updated.cadastro, nome: updated.nome, chaveEntregueEm: null, obs });
+      showToast(`Chave devolvida por ${updated.nome}.`);
+    }
+
+    if(tipo === "PERDEU"){
+      const hadKey = !!emp.chaveEntregueEm;
+      const updated = { ...emp, chaveEntregueEm: null };
+      // total de chaves diminui (chave física perdida)
+      const inUseNow = keysInUseForLocker(locker);
+      const inUseAfter = Math.max(0, inUseNow - (hadKey ? 1 : 0));
+      totalDepois = Math.max(0, Math.floor(totalAntes) - 1);
+      if(totalDepois < inUseAfter) totalDepois = inUseAfter;
+      deltaTotal = totalDepois - totalAntes;
+
+      await saveLockerKeys(locker, totalDepois);
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({
+        tipo: "PERDEU",
+        armario: locker,
+        cadastro: updated.cadastro,
+        nome: updated.nome,
+        chaveEntregueEm: null,
+        obs: obs || "chave perdida",
+        totalAntes,
+        totalDepois,
+        deltaTotal
+      });
+      showToast(`Perda registrada: ${updated.nome}.`);
+    }
+
+    clearKeyEvtForm();
+  }catch(err){
+    showToast("Erro ao registrar evento: " + (err?.message || err));
+  }
+}
+
+// liga os inputs do formulário (se existir)
+if(el("keyEvtDate")) el("keyEvtDate").value = todayISO();
+if(el("btnKeyEvtSave")) el("btnKeyEvtSave").addEventListener("click", (e)=>{ e.preventDefault(); handleKeyEvtSave(); });
+if(el("btnKeyEvtClear")) el("btnKeyEvtClear").addEventListener("click", (e)=>{ e.preventDefault(); clearKeyEvtForm(); });
+
+// filtro do histórico
+if(el("histFilter")) el("histFilter").addEventListener("input", ()=> renderHistory());
+if(el("btnClearHist")) el("btnClearHist").addEventListener("click", (e)=>{
+  e.preventDefault();
+  el("histFilter").value = "";
+  renderHistory();
 });
 
 el("btnAddCopy").addEventListener("click", async ()=>{
