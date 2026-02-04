@@ -66,11 +66,29 @@
         <div class="muted small" id="claimSub">Autoatendimento via QR do armário</div>
 
         <div class="form-grid" style="margin-top:12px">
-          
+          <label>
+            <span>Armário</span>
+            <input id="claimOnlyLocker" type="number" readonly />
+          </label>
+
+          <label>
+            <span>Matrícula</span>
+            <input id="claimOnlyCadastro" type="text" inputmode="numeric" placeholder="Ex.: 26335" />
+          </label>
+
+          <label style="grid-column: 1 / -1">
+            <span>Nome</span>
+            <input id="claimOnlyNome" type="text" readonly placeholder="Digite a matrícula" />
+          </label>
+
+          <label style="grid-column: 1 / -1; display:flex; gap:10px; align-items:center">
+            <input id="claimOnlyAgree" type="checkbox" />
+            <span class="small">Está correto? Confirmo que este armário é meu.</span>
+          </label>
         </div>
 
         <div class="row" style="gap:10px; margin-top:14px">
-          <button class="btn btn-primary big-confirm" id="claimOnlyConfirm" disabled>CONFIRMAR ARMÁRIO</button>
+          <button class="btn" id="claimOnlyConfirm" disabled>Confirmar</button>
         </div>
 
         <div class="muted small" id="claimOnlyMsg" style="margin-top:10px"></div>
@@ -85,7 +103,387 @@
         <div class="muted small">Digite o PIN de administrador para acessar o sistema completo.</div>
 
         <div class="form-grid" style="margin-top:12px">
+          <label style="grid-column: 1 / -1">
+            <span>PIN Admin</span>
+            <input id="adminPinInput" type="password" inputmode="numeric" placeholder="••••••" />
+          </label>
+        </div>
+
+        <div class="row" style="gap:10px; margin-top:14px">
+          <button class="btn" id="btnAdminEnter">Entrar</button>
+        </div>
+
+        <div class="muted small" id="adminGateMsg" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+<section class="panel active" id="tab-colabs">
+      <div class="toolbar">
+        <div class="search">
+          <input id="searchInput" type="search" placeholder="Buscar por matrícula, nome, cargo..." />
+          <span class="hint">Dica: clique no armário para editar</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="btnAdd">+ Novo colaborador</button>
+          <button class="btn btn-ghost" id="btnClearFilters">Limpar busca</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Admissão</th>
+              <th>Cargo</th>
+              <th>Armário</th>
+              <th>Posição</th>
+              <th>Chave entregue em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="footer-note">
+        <span class="muted">Os dados ficam salvos no Firebase (tempo real). Use Exportar para backup.</span>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-lockers">
+      <div class="toolbar">
+        <div class="search">
+          <input id="lockerFilter" type="search" placeholder="Filtrar (ex: 42, 1-50, 2xx)..." />
+          <span class="hint">Use o filtro ao lado para ver todos / livres / ocupados</span>
+        </div>
+        <div class="actions">
           
+          <select id="lockerStatus" class="select">
+            <option value="all">Todos</option>
+            <option value="free">Livres</option>
+            <option value="used">Ocupados</option>
+          </select>
+          <button class="btn btn-ghost" id="btnCopyFree">Copiar lista</button>
+        </div>
+      </div>
+
+      <div class="lockers">
+        <div class="lockers-head">
+          <div class="lockers-title">Armários disponíveis</div>
+          <div class="lockers-sub" id="freeSummary"></div>
+        </div>
+        
+        <div class="card locker-pos-card">
+          <h3>Posição (Cima/Baixo)</h3>
+          <p class="muted small">Defina a posição de um armário pelo número. Se não definir, o app usa a regra padrão da aba Config.</p>
+          <div class="row">
+            <input type="number" id="posNumber" min="1" placeholder="Nº do armário" />
+            <select id="posValue">
+              <option value="BAIXO">BAIXO</option>
+              <option value="CIMA">CIMA</option>
+            </select>
+            <button class="btn" id="btnSavePos">Salvar posição</button>
+          </div>
+        
+        <div class="card locker-keys-card">
+          <h3>Chaves por armário (cópias)</h3>
+          <p class="muted small">Defina quantas cópias de chave existem para um armário. Padrão: 1. O app calcula automaticamente quantas estão disponíveis.</p>
+          <div class="row">
+            <input type="number" id="keyNumber" min="1" placeholder="Nº do armário" />
+            <input type="number" id="keyTotal" min="1" max="99" placeholder="Total de chaves" />
+            <button class="btn" id="btnSaveKeys">Salvar chaves</button>
+            <button class="btn btn-ghost" id="btnAddCopy">+1 cópia</button>
+          </div>
+        </div>
+
+</div>
+<div class="row wrap" style="gap:10px; margin-top:10px">
+            <label class="inline" style="min-width:260px">
+              <span class="muted small">URL pública (opcional)</span>
+              <input id="qrBaseUrl" type="url" placeholder="https://seusite.com/index.html" style="width:260px" />
+            </label>
+
+            <label class="inline">
+              <span class="muted small">De</span>
+              <input id="qrFrom" type="number" min="1" placeholder="1" style="width:90px" />
+            </label>
+            <label class="inline">
+              <span class="muted small">Até</span>
+              <input id="qrTo" type="number" min="1" placeholder="50" style="width:90px" />
+            </label>
+            <button class="btn" id="btnGenQR">Gerar QRs</button>
+            <button class="btn btn-ghost" id="btnPrintQR">Imprimir</button>
+            <div class="muted small" id="qrHint" style="margin-left:auto"></div>
+          </div>
+
+          <div id="qrGrid" class="qr-grid" style="margin-top:12px"></div>
+        </div>
+
+        <div id="freeGrid" class="free-grid"></div>
+      </div>
+    
+
+
+        
+        <div class="card qr-card">
+          <div class="qr-head">
+            <h3>📷 QR Codes dos armários (autoatendimento)</h3>
+            <p class="muted small">Cole o QR no armário. Ao escanear, o colaborador confirma a matrícula e associa o armário ao seu cadastro. Não altera a estrutura do Firebase.</p>
+          </div>
+
+          
+</section>
+
+    <section class="panel" id="tab-import">
+      <div class="cards">
+        <div class="card">
+          <h3>Importar XML</h3>
+          <p class="muted">
+            Se você tiver um XML com colaboradores (Cadastro, Nome, Admissão, Cargo, Numero do armario),
+            dá pra importar aqui. Se a matrícula já existir, o app atualiza os dados.
+          </p>
+          <input type="file" id="xmlFile" accept=".xml,text/xml,application/xml" />
+          <div class="row">
+            <button class="btn" id="btnImportXml">Importar XML</button>
+          </div>
+          <p class="muted small">Observação: a importação não apaga seus dados atuais; apenas mescla.</p>
+        </div>
+
+        <div class="card">
+          <h3>Exportar</h3>
+          <p class="muted">Faça backup dos dados atuais em JSON (recomendado) ou exporte XML.</p>
+          <div class="row">
+            <button class="btn" id="btnExportJson">Baixar JSON</button>
+            <button class="btn btn-ghost" id="btnExportXml">Baixar XML</button>
+          </div>
+        </div>
+
+        <div class="card danger">
+          <h3>Reset</h3>
+          <p class="muted">Apaga os dados salvos no navegador e volta para a base inicial (do seu arquivo).</p>
+          <div class="row">
+            <button class="btn btn-danger" id="btnReset">Resetar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-config">
+      <div class="cards">
+        
+        <div class="card">
+          <h3>Regra padrão Cima/Baixo</h3>
+          <p class="muted">Se não houver configuração por número, o app usa esta regra:</p>
+          <p class="muted small"><b>1 até X = (configurável)</b> • <b>X+1 até Total = o oposto</b></p>
+          <div class="row">
+            <input type="number" id="splitInput" min="0" />
+            <select id="padraoAteInput" class="select">
+              <option value="BAIXO">Até X = BAIXO</option>
+              <option value="CIMA">Até X = CIMA</option>
+            </select>
+            <button class="btn" id="btnSaveSplit">Salvar</button>
+          </div>
+        </div>
+
+<div class="card">
+          <h3>Total de armários</h3>
+          <p class="muted">Por padrão está em 300. Se mudar, a lista de disponíveis e validações seguem o novo total.</p>
+          <div class="row">
+            <input type="number" id="totalInput" min="1" max="5000" />
+            <button class="btn" id="btnSaveTotal">Salvar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Importar backup (JSON)</h3>
+          <p class="muted">Restaure um backup exportado anteriormente.</p>
+          <input type="file" id="jsonFile" accept=".json,application/json" />
+          <div class="row">
+            <button class="btn" id="btnImportJson">Importar JSON</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="panel" id="tab-history">
+      <div class="cards">
+
+        <div class="card">
+          <h3>🗝️ Controle rápido de chaves</h3>
+          <p class="muted small">Registre cópias, perdas e entregas/devoluções <b>sem mexer na estrutura do Firebase</b> (apenas adiciona eventos em <b>/historicoChaves</b> e, quando necessário, ajusta <b>/lockerKeys</b> e/ou <b>/employees</b>).</p>
+          <div class="form-grid" style="margin-top:10px">
+            <label>
+              <span>Armário</span>
+              <input id="keyEvtLocker" type="number" min="1" placeholder="Nº do armário" />
+            </label>
+
+            <label>
+              <span>Ação</span>
+              <select id="keyEvtType" class="select">
+                <option value="ENTREGOU">Entregou chave</option>
+                <option value="DEVOLVEU">Devolveu chave</option>
+                <option value="PERDEU">Perdeu chave</option>
+                <option value="COPIA_FEITA">Fiz cópia (+1)</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Colaborador</span>
+              <select id="keyEvtEmp" class="select">
+                <option value="">(selecione)</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Data</span>
+              <input id="keyEvtDate" type="date" />
+            </label>
+          </div>
+
+          <label style="display:block; margin-top:10px">
+            <span>Observação (opcional)</span>
+            <input id="keyEvtObs" placeholder="Ex.: entreguei 2ª via, chave quebrada, etc." />
+          </label>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="btnKeyEvtSave">Registrar evento</button>
+            <button class="btn btn-ghost" id="btnKeyEvtClear">Limpar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📜 Histórico de chaves</h3>
+          <p class="muted small">Últimos 200 registros (tempo real). Você pode abrir direto em <b>/historicoChaves</b>.</p>
+          <div class="row">
+            <input id="histFilter" type="search" placeholder="Filtrar por armário, matrícula, nome..." />
+            <button class="btn btn-ghost" id="btnClearHist">Limpar filtro</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table class="grid" style="min-width: 980px">
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Tipo</th>
+                  <th>Armário</th>
+                  <th>Matrícula</th>
+                  <th>Nome</th>
+                  <th>Obs</th>
+                </tr>
+              </thead>
+              <tbody id="histBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card danger">
+          <h3>📊 Relatório • Armários em risco (1 chave)</h3>
+          <p class="muted small">Lista dos armários que possuem <b>apenas 1 cópia</b>. Recomenda-se fazer cópia extra.</p>
+          <div id="riskSummary" class="muted small" style="margin-bottom:8px"></div>
+          <div id="riskGrid" class="free-grid"></div>
+        </div>
+
+        <div class="card danger">
+          <h3>🔔 Alerta automático • 0 chaves disponíveis</h3>
+          <p class="muted small">Armários onde <b>todas as cópias</b> estão em uso (disponível = 0).</p>
+          <div id="zeroKeysSummary" class="muted small" style="margin-bottom:8px"></div>
+          <div id="zeroKeysGrid" class="free-grid"></div>
+        </div>
+      </div>
+    </section>
+
+</section>
+
+  </main>
+
+  <!-- Modal -->
+  <dialog id="modal">
+    <form method="dialog" class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Novo colaborador</div>
+        <button class="icon-btn" value="cancel" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <label>
+            <span>Matrícula (Cadastro)</span>
+            <input id="fCadastro" required />
+          </label>
+
+          <label>
+            <span>Nome</span>
+            <input id="fNome" required />
+          </label>
+
+          <label>
+            <span>Admissão</span>
+            <input id="fAdmissao" type="date" />
+          </label>
+
+          <label>
+            <span>Cargo</span>
+            <input id="fCargo" />
+          </label>
+
+          <label>
+            <span>Armário</span>
+            <select id="fArmario">
+              <option value="">(sem armário)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Chave entregue em</span>
+            <input id="fChave" type="date" />
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" value="cancel">Cancelar</button>
+        <button class="btn" id="btnSave" value="default">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script type="module" src="app.js"></script>
+
+  <dialog id="claimModal" class="modal">
+    <form method="dialog" class="modal-card" id="claimForm">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Confirmar armário</div>
+          <div class="muted small">Escaneado via QR do armário</div>
+        </div>
+        <button class="icon-btn" value="cancel" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="form-grid" style="margin-top:10px">
+        <label>
+          <span>Armário</span>
+          <input id="claimLocker" type="number" readonly />
+        </label>
+
+        <label>
+          <span>Matrícula</span>
+          <input id="claimCadastro" type="text" inputmode="numeric" placeholder="Ex.: 26335" />
+        </label>
+
+        <label style="grid-column: 1 / -1">
+          <span>Nome (encontrado)</span>
+          <input id="claimNome" type="text" readonly placeholder="Digite a matrícula para carregar" />
+        </label>
+
+        <label style="grid-column: 1 / -1; display:flex; gap:10px; align-items:center">
+          <input id="claimAgree" type="checkbox" />
+          <span class="small">Confirmo que este armário é meu.</span>
+        </label>
       </div>
 
       <div class="modal-actions" style="margin-top:12px">

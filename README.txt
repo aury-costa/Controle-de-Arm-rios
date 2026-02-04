@@ -33,6 +33,3 @@ v4: Controle de cópias de chaves por armário (lockerKeys), com validação na 
 
 
 [Atualização] Modo QR: interface travada (sem chance de ver a lista ao cancelar). Modo Admin: PIN obrigatório para ver o sistema completo.
-
-
-[Ajuste fino] Confirmação via QR sem checkbox; botão grande e mais visível.

@@ -514,6 +514,7 @@ const claimOnly = el("claimOnly");
 const claimOnlyLocker = el("claimOnlyLocker");
 const claimOnlyCadastro = el("claimOnlyCadastro");
 const claimOnlyNome = el("claimOnlyNome");
+const claimOnlyAgree = el("claimOnlyAgree");
 const claimOnlyConfirm = el("claimOnlyConfirm");
 const claimOnlyMsg = el("claimOnlyMsg");
 
@@ -597,15 +598,14 @@ function openClaimOnly(lockerNumber){
   if(claimOnlyCadastro) setTimeout(()=>claimOnlyCadastro.focus(), 50);
 }
 
-
 function refreshClaimOnlyUI(){
   const cad = String(claimOnlyCadastro?.value ?? "").trim();
   const emp = state.employees.find(e => String(e.cadastro) === cad);
   if(claimOnlyNome) claimOnlyNome.value = emp ? emp.nome : "";
-  if(claimOnlyConfirm) claimOnlyConfirm.disabled = !emp;
+  if(claimOnlyConfirm) claimOnlyConfirm.disabled = !(emp && claimOnlyAgree?.checked);
 }
-
 claimOnlyCadastro?.addEventListener("input", refreshClaimOnlyUI);
+claimOnlyAgree?.addEventListener("change", refreshClaimOnlyUI);
 
 claimOnlyConfirm?.addEventListener("click", async ()=>{
   try{
