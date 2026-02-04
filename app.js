@@ -598,12 +598,15 @@ function openClaimOnly(lockerNumber){
   if(claimOnlyCadastro) setTimeout(()=>claimOnlyCadastro.focus(), 50);
 }
 
+
 function refreshClaimOnlyUI(){
   const cad = String(claimOnlyCadastro?.value ?? "").trim();
   const emp = state.employees.find(e => String(e.cadastro) === cad);
   if(claimOnlyNome) claimOnlyNome.value = emp ? emp.nome : "";
-  if(claimOnlyConfirm) claimOnlyConfirm.disabled = !(emp && claimOnlyAgree?.checked);
+  if(claimOnlyAgree) claimOnlyAgree.checked = true;
+  if(claimOnlyConfirm) claimOnlyConfirm.disabled = !emp;
 }
+
 claimOnlyCadastro?.addEventListener("input", refreshClaimOnlyUI);
 claimOnlyAgree?.addEventListener("change", refreshClaimOnlyUI);
 
