@@ -41,6 +41,84 @@ const panels = {
 const modal = el("modal");
 const toast = el("toast");
 const connStatus = el("connStatus");
+// ===== Gate Admin (UI-only) =====
+const adminGate = el("adminGate");
+const adminPinInput = el("adminPinInput");
+const btnAdminEnter = el("btnAdminEnter");
+const adminGateMsg = el("adminGateMsg");
+const btnAdminLogout = el("btnAdminLogout");
+
+const adminPinConfig = el("adminPinConfig");
+const btnSaveAdminPin = el("btnSaveAdminPin");
+const btnClearAdminPin = el("btnClearAdminPin");
+
+function isClaimMode(){
+  return document.documentElement.classList.contains("claim-mode") || document.body.classList.contains("claim-mode");
+}
+
+function hasAdminSession(){
+  return localStorage.getItem("adminSession") === "1";
+}
+
+function lockAdminIfNeeded(){
+  // Se não estiver em modo QR e tiver PIN definido, exige sessão admin
+  if(isClaimMode()) return;
+  const pin = (state.adminPin || "").trim();
+  if(pin && !hasAdminSession()){
+    document.documentElement.classList.add("admin-locked");
+  }else{
+    document.documentElement.classList.remove("admin-locked");
+  }
+}
+
+btnAdminEnter?.addEventListener("click", ()=>{
+  const pin = (state.adminPin || "").trim();
+  if(!pin){
+    adminGateMsg.textContent = "Nenhum PIN definido em Config.";
+    return;
+  }
+  const typed = String(adminPinInput.value || "").trim();
+  if(typed === pin){
+    localStorage.setItem("adminSession","1");
+    document.documentElement.classList.remove("admin-locked");
+    adminGateMsg.textContent = "";
+    adminPinInput.value = "";
+    showToast("Acesso liberado.");
+  }else{
+    adminGateMsg.textContent = "PIN incorreto.";
+  }
+});
+
+btnAdminLogout?.addEventListener("click", ()=>{
+  localStorage.removeItem("adminSession");
+  showToast("Sessão encerrada.");
+  lockAdminIfNeeded();
+});
+
+// Config: salvar/remover PIN no Firebase
+btnSaveAdminPin?.addEventListener("click", async ()=>{
+  try{
+    const v = String(adminPinConfig.value || "").trim();
+    if(!v) { showToast("Digite um PIN."); return; }
+    await set(ref(db, "config/adminPin"), v);
+    showToast("PIN salvo.");
+    adminPinConfig.value = "";
+  }catch(err){
+    showToast(err?.message || "Erro ao salvar PIN.");
+  }
+});
+
+btnClearAdminPin?.addEventListener("click", async ()=>{
+  try{
+    await set(ref(db, "config/adminPin"), "");
+    localStorage.removeItem("adminSession");
+    showToast("PIN removido.");
+    lockAdminIfNeeded();
+  }catch(err){
+    showToast(err?.message || "Erro ao remover PIN.");
+  }
+});
+
 
 let state = {
   totalLockers: 300,
@@ -278,6 +356,7 @@ function startRealtime(){
   onValue(ref(db, "employees"), (snap)=>{
     const v = snap.val();
     state.publicBaseUrl = v?.publicBaseUrl ?? state.publicBaseUrl ?? "";
+    state.adminPin = v?.adminPin ?? state.adminPin ?? "";
     // se o usuário digitar manualmente na tela de QR, isso tem prioridade no momento
 
     seedIfEmpty(v);
@@ -503,6 +582,7 @@ function refreshClaimUI(){
 
 
 function setClaimMode(on){
+  document.documentElement.classList.toggle("claim-mode", !!on);
   document.body.classList.toggle("claim-mode", !!on);
 }
 
@@ -675,6 +755,8 @@ btnPrintQR?.addEventListener("click", ()=>{
     }
   }
 })();
+// aplica gate admin após identificar modo
+lockAdminIfNeeded();
 
 
 function tdText(text){

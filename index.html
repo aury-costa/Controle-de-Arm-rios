@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Armários • Colaboradores</title>
   <link rel="stylesheet" href="styles.css" />
+
+  <script>
+    (function(){
+      try{
+        var p = new URLSearchParams(location.search);
+        if(p.get('claim') === '1') document.documentElement.classList.add('claim-mode');
+      }catch(e){}
+    })();
+  </script>
+
 </head>
 <body>
   <header class="topbar">
@@ -15,6 +25,7 @@
         <div class="subtitle">Mapeie colaboradores ↔ armário e controle disponibilidade</div>
       </div>
         <div class="conn" id="connStatus">Conectando…</div>
+        <button class="btn btn-ghost small" id="btnAdminLogout" title="Sair">Sair 🔒</button>
       </div>
     </div>
 
@@ -85,7 +96,28 @@
     </section>
 
 
-    <section class="panel active" id="tab-colabs">
+    
+    <section class="admin-only" id="adminGate">
+      <div class="admin-card">
+        <div class="admin-title">🔒 Acesso restrito (DP)</div>
+        <div class="muted small">Digite o PIN de administrador para acessar o sistema completo.</div>
+
+        <div class="form-grid" style="margin-top:12px">
+          <label style="grid-column: 1 / -1">
+            <span>PIN Admin</span>
+            <input id="adminPinInput" type="password" inputmode="numeric" placeholder="••••••" />
+          </label>
+        </div>
+
+        <div class="row" style="gap:10px; margin-top:14px">
+          <button class="btn" id="btnAdminEnter">Entrar</button>
+        </div>
+
+        <div class="muted small" id="adminGateMsg" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+<section class="panel active" id="tab-colabs">
       <div class="toolbar">
         <div class="search">
           <input id="searchInput" type="search" placeholder="Buscar por matrícula, nome, cargo..." />
