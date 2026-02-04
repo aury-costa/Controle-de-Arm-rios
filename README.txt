@@ -22,3 +22,8 @@ Observação
 
 
 v4: Controle de cópias de chaves por armário (lockerKeys), com validação na entrega e visual no painel.
+
+[Atualização] Adicionado modo QR (autoatendimento por armário): gere QRs na aba Armários e escaneie para associar armário ao colaborador.
+
+
+[Correção] QR agora permite definir URL pública (ex.: GitHub Pages) para funcionar no celular. Impressão corrigida (QR card fora da área escondida na impressão).

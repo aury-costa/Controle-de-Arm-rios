@@ -31,16 +31,21 @@
         <div class="pill-label">Disponíveis</div>
         <div class="pill-value" id="freeLockers">300</div>
       </div>
+
+      <div class="pill pill-warn" id="zeroKeysPill" title="Armários onde não existe chave reserva (disponível = 0)">
+        <div class="pill-label">Sem reserva</div>
+        <div class="pill-value" id="zeroKeysCount">0</div>
+      </div>
     </div>
   </header>
 
   <main class="container">
     <nav class="tabs">
-      <button class="tab active" data-tab="colabs">Colaboradores</button>
-      <button class="tab" data-tab="lockers">Armários disponíveis</button>
-      <button class="tab" data-tab="import">Importar/Exportar</button>
-      <button class="tab" data-tab="config">Config</button>
-      <a class="tab tab-link" href="/historicoChaves" data-tab="history">Histórico</a>
+      <button class="tab active" data-tab="colabs">Colaboradores 👥</button>
+      <button class="tab" data-tab="lockers">Armários 🧰</button>
+      <button class="tab" data-tab="import">Importar/Exportar 📦</button>
+      <button class="tab" data-tab="config">Config ⚙️</button>
+      <button class="tab" data-tab="history">Histórico 📜</button>
     </nav>
 
     <section class="panel active" id="tab-colabs">
@@ -125,10 +130,42 @@
         </div>
 
 </div>
+<div class="row wrap" style="gap:10px; margin-top:10px">
+            <label class="inline" style="min-width:260px">
+              <span class="muted small">URL pública (opcional)</span>
+              <input id="qrBaseUrl" type="url" placeholder="https://seusite.com/index.html" style="width:260px" />
+            </label>
+
+            <label class="inline">
+              <span class="muted small">De</span>
+              <input id="qrFrom" type="number" min="1" placeholder="1" style="width:90px" />
+            </label>
+            <label class="inline">
+              <span class="muted small">Até</span>
+              <input id="qrTo" type="number" min="1" placeholder="50" style="width:90px" />
+            </label>
+            <button class="btn" id="btnGenQR">Gerar QRs</button>
+            <button class="btn btn-ghost" id="btnPrintQR">Imprimir</button>
+            <div class="muted small" id="qrHint" style="margin-left:auto"></div>
+          </div>
+
+          <div id="qrGrid" class="qr-grid" style="margin-top:12px"></div>
+        </div>
 
         <div id="freeGrid" class="free-grid"></div>
       </div>
-    </section>
+    
+
+
+        
+        <div class="card qr-card">
+          <div class="qr-head">
+            <h3>📷 QR Codes dos armários (autoatendimento)</h3>
+            <p class="muted small">Cole o QR no armário. Ao escanear, o colaborador confirma a matrícula e associa o armário ao seu cadastro. Não altera a estrutura do Firebase.</p>
+          </div>
+
+          
+</section>
 
     <section class="panel" id="tab-import">
       <div class="cards">
@@ -204,6 +241,50 @@
 
     <section class="panel" id="tab-history">
       <div class="cards">
+
+        <div class="card">
+          <h3>🗝️ Controle rápido de chaves</h3>
+          <p class="muted small">Registre cópias, perdas e entregas/devoluções <b>sem mexer na estrutura do Firebase</b> (apenas adiciona eventos em <b>/historicoChaves</b> e, quando necessário, ajusta <b>/lockerKeys</b> e/ou <b>/employees</b>).</p>
+          <div class="form-grid" style="margin-top:10px">
+            <label>
+              <span>Armário</span>
+              <input id="keyEvtLocker" type="number" min="1" placeholder="Nº do armário" />
+            </label>
+
+            <label>
+              <span>Ação</span>
+              <select id="keyEvtType" class="select">
+                <option value="ENTREGOU">Entregou chave</option>
+                <option value="DEVOLVEU">Devolveu chave</option>
+                <option value="PERDEU">Perdeu chave</option>
+                <option value="COPIA_FEITA">Fiz cópia (+1)</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Colaborador</span>
+              <select id="keyEvtEmp" class="select">
+                <option value="">(selecione)</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Data</span>
+              <input id="keyEvtDate" type="date" />
+            </label>
+          </div>
+
+          <label style="display:block; margin-top:10px">
+            <span>Observação (opcional)</span>
+            <input id="keyEvtObs" placeholder="Ex.: entreguei 2ª via, chave quebrada, etc." />
+          </label>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="btnKeyEvtSave">Registrar evento</button>
+            <button class="btn btn-ghost" id="btnKeyEvtClear">Limpar</button>
+          </div>
+        </div>
+
         <div class="card">
           <h3>📜 Histórico de chaves</h3>
           <p class="muted small">Últimos 200 registros (tempo real). Você pode abrir direto em <b>/historicoChaves</b>.</p>
@@ -212,7 +293,7 @@
             <button class="btn btn-ghost" id="btnClearHist">Limpar filtro</button>
           </div>
           <div class="table-wrap" style="margin-top:12px">
-            <table class="grid" style="min-width: 820px">
+            <table class="grid" style="min-width: 980px">
               <thead>
                 <tr>
                   <th>Quando</th>
@@ -220,6 +301,7 @@
                   <th>Armário</th>
                   <th>Matrícula</th>
                   <th>Nome</th>
+                  <th>Obs</th>
                 </tr>
               </thead>
               <tbody id="histBody"></tbody>
@@ -300,6 +382,47 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="app.js"></script>
+
+  <dialog id="claimModal" class="modal">
+    <form method="dialog" class="modal-card" id="claimForm">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Confirmar armário</div>
+          <div class="muted small">Escaneado via QR do armário</div>
+        </div>
+        <button class="icon-btn" value="cancel" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="form-grid" style="margin-top:10px">
+        <label>
+          <span>Armário</span>
+          <input id="claimLocker" type="number" readonly />
+        </label>
+
+        <label>
+          <span>Matrícula</span>
+          <input id="claimCadastro" type="text" inputmode="numeric" placeholder="Ex.: 26335" />
+        </label>
+
+        <label style="grid-column: 1 / -1">
+          <span>Nome (encontrado)</span>
+          <input id="claimNome" type="text" readonly placeholder="Digite a matrícula para carregar" />
+        </label>
+
+        <label style="grid-column: 1 / -1; display:flex; gap:10px; align-items:center">
+          <input id="claimAgree" type="checkbox" />
+          <span class="small">Confirmo que este armário é meu.</span>
+        </label>
+      </div>
+
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="btn btn-ghost" value="cancel" type="button" id="claimCancel">Cancelar</button>
+        <button class="btn" value="default" type="submit" id="claimConfirm" disabled>Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
 </body>
 </html>

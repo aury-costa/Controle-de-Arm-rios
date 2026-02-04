@@ -45,7 +45,6 @@ const connStatus = el("connStatus");
 let state = {
   totalLockers: 300,
   defaultSplit: 150, // 1..X = BAIXO, X+1..total = CIMA (padrão)
-  defaultPadraoAte: "BAIXO", // "Até X = BAIXO" (padrão) | "Até X = CIMA"
   lockerPositions: {}, // override por número: { "42": "CIMA" }
   lockerKeys: {}, // override por número: { "42": 2 } (total de chaves)
   employees: [], // [{cadastro, nome, admissao, cargo, armario, chaveEntregueEm}]
@@ -103,9 +102,7 @@ function lockerPosition(n){
   const ov = state.lockerPositions?.[key];
   if(ov === "CIMA" || ov === "BAIXO") return ov;
   const split = Number.isFinite(state.defaultSplit) ? state.defaultSplit : Math.floor(state.totalLockers/2);
-  const ateX = (state.defaultPadraoAte === "CIMA") ? "CIMA" : "BAIXO";
-  const restante = (ateX === "CIMA") ? "BAIXO" : "CIMA";
-  return n <= split ? ateX : restante;
+  return n <= split ? "BAIXO" : "CIMA";
 }
 
 // ===== Chaves (cópias) por armário =====
@@ -136,7 +133,7 @@ async function saveLockerKeys(num, total){
   await set(ref(db, `lockerKeys/${num}`), total);
 }
 
-async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueEm }){
+async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueEm, obs, totalAntes, totalDepois, deltaTotal }){
   // não falha o fluxo principal se o log falhar
   try{
     const payload = {
@@ -145,7 +142,11 @@ async function logHistoricoChave({ tipo, armario, cadastro, nome, chaveEntregueE
       armario: armario == null ? null : Number(armario),
       cadastro: String(cadastro || ""),
       nome: String(nome || ""),
-      chaveEntregueEm: chaveEntregueEm ?? null
+      chaveEntregueEm: chaveEntregueEm ?? null,
+      obs: obs ? String(obs) : "",
+      totalAntes: Number.isFinite(totalAntes) ? Number(totalAntes) : null,
+      totalDepois: Number.isFinite(totalDepois) ? Number(totalDepois) : null,
+      deltaTotal: Number.isFinite(deltaTotal) ? Number(deltaTotal) : null
     };
     await push(ref(db, "historicoChaves"), payload);
   }catch(err){
@@ -225,6 +226,11 @@ function startRealtime(){
     el("splitInput").value = state.defaultSplit;
     if(el("padraoAteInput")) el("padraoAteInput").value = state.defaultPadraoAte;
     renderAll();
+    // se veio via QR (?claim=1&locker=...), abre o modal depois que os colaboradores carregarem
+    if(pendingClaimLocker != null){
+      openClaimModal(pendingClaimLocker);
+      pendingClaimLocker = null;
+    }
   });
 
   // locker positions override
@@ -254,6 +260,10 @@ function startRealtime(){
         cadastro: String(h.cadastro || ""),
         nome: String(h.nome || ""),
         chaveEntregueEm: h.chaveEntregueEm ?? null,
+        obs: String(h.obs || ""),
+        totalAntes: (h.totalAntes == null ? null : Number(h.totalAntes)),
+        totalDepois: (h.totalDepois == null ? null : Number(h.totalDepois)),
+        deltaTotal: (h.deltaTotal == null ? null : Number(h.deltaTotal)),
       });
     }
     arr.sort((a,b)=> (b.ts||0) - (a.ts||0));
@@ -267,6 +277,9 @@ function startRealtime(){
   // employees
   onValue(ref(db, "employees"), (snap)=>{
     const v = snap.val();
+    state.publicBaseUrl = v?.publicBaseUrl ?? state.publicBaseUrl ?? "";
+    // se o usuário digitar manualmente na tela de QR, isso tem prioridade no momento
+
     seedIfEmpty(v);
     const arr = [];
     if(v){
@@ -287,6 +300,8 @@ function startRealtime(){
       if(e.armario != null && (e.armario < 1 || e.armario > state.totalLockers)) e.armario = null;
     }
     state.employees = arr;
+    // atualiza opções do seletor do "Controle rápido de chaves"
+    refreshKeyEvtEmpOptions();
     renderAll();
   }, (err)=>{
     showToast("Erro Firebase (employees): " + (err?.message || err));
@@ -356,11 +371,6 @@ async function saveDefaultSplit(split){
   await set(ref(db, "config/defaultSplit"), split);
 }
 
-async function saveDefaultPadraoAte(padrao){
-  const v = (padrao === "CIMA") ? "CIMA" : "BAIXO";
-  await set(ref(db, "config/padraoAte"), v);
-}
-
 async function saveLockerPosition(num, pos){
   await set(ref(db, `lockerPositions/${num}`), pos);
 }
@@ -389,6 +399,23 @@ function updateStats(){
   el("totalLockers").textContent = String(state.totalLockers);
   el("usedLockers").textContent = String(used);
   el("freeLockers").textContent = String(free);
+
+  // alerta compacto no topo: armários sem chave reserva (disponível = 0)
+  const zeroPill = document.getElementById("zeroKeysPill");
+  const zeroCountEl = document.getElementById("zeroKeysCount");
+  if(zeroPill && zeroCountEl){
+    const usedSet = getUsedLockers();
+    let zeroCount = 0;
+    for(const n of usedSet){
+      if(keysAvailableForLocker(n) <= 0) zeroCount++;
+    }
+    zeroCountEl.textContent = String(zeroCount);
+    zeroPill.classList.toggle("pulse", zeroCount > 0);
+    zeroPill.style.display = "";
+    zeroPill.title = zeroCount
+      ? `🔔 ${zeroCount} armário(s) sem chave reserva (disponível = 0).`
+      : "✅ Todos os armários têm ao menos 1 chave reserva disponível.";
+  }
 }
 
 function switchTab(name){
@@ -400,11 +427,204 @@ function switchTab(name){
   }
 }
 
-tabs.forEach(t => t.addEventListener("click", (ev)=>{
-  // Se algum item for <a>, evita navegação/404 em hospedagem estática
-  if(t.tagName === "A") ev.preventDefault();
-  switchTab(t.dataset.tab);
-}));
+tabs.forEach(t => t.addEventListener("click", ()=> switchTab(t.dataset.tab)));
+
+// ===== QR / Autoatendimento (por armário) =====
+const claimModal = el("claimModal");
+const claimForm = el("claimForm");
+const claimLockerInput = el("claimLocker");
+const claimCadastro = el("claimCadastro");
+const claimNome = el("claimNome");
+const claimAgree = el("claimAgree");
+const claimConfirm = el("claimConfirm");
+const claimCancel = el("claimCancel");
+
+const qrFrom = el("qrFrom");
+const qrTo = el("qrTo");
+const btnGenQR = el("btnGenQR");
+const btnPrintQR = el("btnPrintQR");
+const qrGrid = el("qrGrid");
+const qrHint = el("qrHint");
+const qrBaseUrl = el("qrBaseUrl");
+
+
+let pendingClaimLocker = null;
+
+function buildLockerClaimUrl(n){
+  // Preferência de URL pública (para QR funcionar fora do PC)
+  const base = (state.publicBaseUrl || localStorage.getItem("publicBaseUrl") || "").trim();
+  try{
+    if(base){
+      const u = new URL(base);
+      u.searchParams.set("claim","1");
+      u.searchParams.set("locker", String(n));
+      return u.toString();
+    }
+    const u = new URL(window.location.href);
+    u.searchParams.set("claim","1");
+    u.searchParams.set("locker", String(n));
+    u.hash = "";
+    return u.toString();
+  }catch{
+    const originPath = `${location.origin}${location.pathname}`;
+    return `${originPath}?claim=1&locker=${n}`;
+  }
+}
+
+function openClaimModal(lockerNumber){
+  const n = Number(lockerNumber);
+  if(!Number.isFinite(n)) return;
+
+  claimLockerInput.value = String(n);
+  claimCadastro.value = "";
+  claimNome.value = "";
+  claimAgree.checked = false;
+  claimConfirm.disabled = true;
+
+  if(!claimModal.open) claimModal.showModal();
+  setTimeout(()=> claimCadastro.focus(), 50);
+}
+
+function refreshClaimUI(){
+  const cad = String(claimCadastro.value ?? "").trim();
+  const emp = state.employees.find(e => String(e.cadastro) === cad);
+  claimNome.value = emp ? emp.nome : "";
+  claimConfirm.disabled = !(emp && claimAgree.checked);
+}
+
+claimCadastro?.addEventListener("input", refreshClaimUI);
+claimAgree?.addEventListener("change", refreshClaimUI);
+claimCancel?.addEventListener("click", ()=> claimModal.close());
+
+async function selfAssignLocker(cadastro, lockerNumber){
+  const cad = String(cadastro ?? "").trim();
+  const locker = Number(lockerNumber);
+  if(!cad) throw new Error("Informe a matrícula.");
+  if(!Number.isFinite(locker) || locker < 1) throw new Error("Armário inválido.");
+
+  const current = state.employees.find(e => String(e.cadastro) === cad);
+  if(!current) throw new Error("Matrícula não encontrada.");
+
+  const prevLocker = current.armario ?? null;
+
+  // reaproveita as rotinas já existentes (índice + transações)
+  await writeEmployee({
+    cadastro: current.cadastro,
+    nome: current.nome ?? "",
+    admissao: current.admissao ?? "",
+    cargo: current.cargo ?? "",
+    armario: locker,
+    chaveEntregueEm: current.chaveEntregueEm ?? null,
+  }, prevLocker);
+
+  // registra no mesmo histórico (não muda estrutura)
+  await logHistoricoChave({
+    tipo: "AUTO_ARMARIO",
+    armario: locker,
+    cadastro: current.cadastro,
+    nome: current.nome,
+    obs: "Autoatendimento via QR do armário",
+  });
+
+  showToast(`Armário ${locker} associado a ${current.nome}.`);
+}
+
+claimForm?.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  try{
+    claimConfirm.disabled = true;
+    await selfAssignLocker(claimCadastro.value, claimLockerInput.value);
+    claimModal.close();
+
+    // limpa a URL (tira claim/locker) para não reabrir ao recarregar
+    const u = new URL(window.location.href);
+    u.searchParams.delete("claim");
+    u.searchParams.delete("locker");
+    window.history.replaceState({}, "", u.toString());
+  }catch(err){
+    claimConfirm.disabled = false;
+    showToast(err?.message ?? "Não foi possível confirmar o armário.");
+  }
+});
+
+if(qrBaseUrl){
+  // carrega último valor salvo
+  qrBaseUrl.value = localStorage.getItem("publicBaseUrl") || state.publicBaseUrl || "";
+  qrBaseUrl.addEventListener("change", ()=>{
+    const v = (qrBaseUrl.value || "").trim();
+    if(v) localStorage.setItem("publicBaseUrl", v);
+    else localStorage.removeItem("publicBaseUrl");
+  });
+}
+
+btnGenQR?.addEventListener("click", ()=>{
+  const total = Number(state.totalLockers) || 300;
+  // se informado, usa como base (e salva no localStorage)
+  if(qrBaseUrl){
+    const v = (qrBaseUrl.value || '').trim();
+    if(v) localStorage.setItem('publicBaseUrl', v);
+  }
+  const a = Number(qrFrom.value || 1);
+  const b = Number(qrTo.value || Math.min(total, 50));
+  const from = Math.max(1, Math.min(a, b));
+  const to = Math.min(total, Math.max(a, b));
+
+  qrGrid.innerHTML = "";
+  const count = to - from + 1;
+  const baseUsed = (qrBaseUrl?.value || state.publicBaseUrl || localStorage.getItem('publicBaseUrl') || '').trim();
+  qrHint.textContent = `Gerando ${count} QR(s) — Total configurado: ${total}` + (baseUsed ? ` • Base: ${baseUsed}` : ' • Base: (URL atual)');
+
+  for(let n=from; n<=to; n++){
+    const url = buildLockerClaimUrl(n);
+
+    const item = document.createElement("div");
+    item.className = "qr-item";
+
+    const top = document.createElement("div");
+    top.className = "qr-top";
+    top.innerHTML = `<div class="qr-num">Armário ${n}</div><div class="muted small">QR</div>`;
+
+    const box = document.createElement("div");
+    box.id = `qr_${n}`;
+
+    const link = document.createElement("div");
+    link.className = "qr-url";
+    link.textContent = url;
+
+    item.appendChild(top);
+    item.appendChild(box);
+    item.appendChild(link);
+    qrGrid.appendChild(item);
+
+    // QRCode lib (global)
+    if(window.QRCode){
+      new window.QRCode(box, { text: url, width: 128, height: 128, correctLevel: window.QRCode.CorrectLevel.M });
+    }else{
+      box.textContent = "Biblioteca QR não carregou.";
+    }
+  }
+});
+
+btnPrintQR?.addEventListener("click", ()=>{
+  if(!qrGrid.children.length){
+    showToast("Gere os QRs antes de imprimir.");
+    return;
+  }
+  setTimeout(()=>window.print(), 250);
+});
+
+// lê URL (?claim=1&locker=82)
+(function initClaimFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const claim = params.get("claim");
+  const locker = params.get("locker");
+  if(String(claim) === "1" && locker){
+    pendingClaimLocker = Number(locker);
+    // se já carregou, abre imediatamente
+    if(state.employees?.length) openClaimModal(pendingClaimLocker);
+  }
+})();
+
 
 function tdText(text){
   const td = document.createElement("td");
@@ -626,11 +846,12 @@ function renderRiskAndAlerts(){
     const availK = totalK - inUseK;
 
     if(totalK === 1) risk.push(i);
-    if(availK <= 0 && totalK > 0) zero.push(i);
+    // sem reserva quando disponível = 0 (todas em uso) OU quando total = 0
+    if((availK <= 0 && totalK > 0 && inUseK > 0) || totalK === 0) zero.push(i);
   }
 
   if(riskSummary) riskSummary.textContent = `${risk.length} armário(s) com 1 chave (risco).`;
-  if(zeroSummary) zeroSummary.textContent = `${zero.length} armário(s) com 0 chaves disponíveis (todas em uso).`;
+  if(zeroSummary) zeroSummary.textContent = `${zero.length} armário(s) sem chave reserva (disponível = 0) ou total = 0.`;
 
   const makeCard = (n, kind)=>{
     const div = document.createElement("div");
@@ -712,7 +933,11 @@ function renderHistory(){
   const rows = (state.historicoChaves || []).filter(h=>{
     if(!q) return true;
     const arm = h.armario == null ? "" : String(h.armario);
-    return normalize(arm).includes(q) || normalize(h.cadastro).includes(q) || normalize(h.nome).includes(q) || normalize(h.tipo).includes(q);
+    return normalize(arm).includes(q)
+      || normalize(h.cadastro).includes(q)
+      || normalize(h.nome).includes(q)
+      || normalize(h.tipo).includes(q)
+      || normalize(h.obs).includes(q);
   });
 
   for(const h of rows){
@@ -723,6 +948,7 @@ function renderHistory(){
     tr.appendChild(tdText(h.armario == null ? "" : String(h.armario)));
     tr.appendChild(tdText(h.cadastro));
     tr.appendChild(tdText(h.nome));
+    tr.appendChild(tdText(h.obs));
     body.appendChild(tr);
   }
 
@@ -838,8 +1064,9 @@ el("btnSaveKeys").addEventListener("click", async ()=>{
     showToast("Número de armário inválido.");
     return;
   }
-  if(!Number.isFinite(total) || total < 1 || total > 99){
-    showToast("Total de chaves inválido (1-99).");
+  // permite 0 para representar "nenhuma chave física disponível" (ex.: chave perdida)
+  if(!Number.isFinite(total) || total < 0 || total > 99){
+    showToast("Total de chaves inválido (0-99).");
     return;
   }
   // não permite reduzir abaixo das chaves em uso
@@ -854,6 +1081,157 @@ el("btnSaveKeys").addEventListener("click", async ()=>{
   }catch(err){
     showToast("Erro ao salvar chaves: " + (err?.message || err));
   }
+});
+
+// ===== Controle rápido de chaves (eventos) =====
+function todayISO(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function refreshKeyEvtEmpOptions(){
+  const sel = el("keyEvtEmp");
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = "<option value=\"\">(selecione)</option>";
+  const sorted = [...state.employees].sort((a,b)=> normalize(a.nome).localeCompare(normalize(b.nome)));
+  for(const e of sorted){
+    const opt = document.createElement("option");
+    opt.value = String(e.cadastro);
+    const arm = (e.armario != null && Number.isFinite(e.armario)) ? ` • Armário ${e.armario}` : "";
+    opt.textContent = `${e.nome} (${e.cadastro})${arm}`;
+    sel.appendChild(opt);
+  }
+  sel.value = current;
+}
+
+function clearKeyEvtForm(){
+  if(el("keyEvtLocker")) el("keyEvtLocker").value = "";
+  if(el("keyEvtType")) el("keyEvtType").value = "ENTREGOU";
+  if(el("keyEvtEmp")) el("keyEvtEmp").value = "";
+  if(el("keyEvtDate")) el("keyEvtDate").value = todayISO();
+  if(el("keyEvtObs")) el("keyEvtObs").value = "";
+}
+
+async function handleKeyEvtSave(){
+  const locker = Number(el("keyEvtLocker")?.value);
+  const tipo = String(el("keyEvtType")?.value || "");
+  const cadastro = String(el("keyEvtEmp")?.value || "");
+  const date = String(el("keyEvtDate")?.value || "") || todayISO();
+  const obs = String(el("keyEvtObs")?.value || "").trim();
+
+  if(!Number.isFinite(locker) || locker < 1 || locker > state.totalLockers){
+    showToast("Informe um número de armário válido.");
+    return;
+  }
+
+  // ações que precisam de colaborador
+  const needsEmp = (tipo === "ENTREGOU" || tipo === "DEVOLVEU" || tipo === "PERDEU");
+  if(needsEmp && !cadastro){
+    showToast("Selecione um colaborador.");
+    return;
+  }
+
+  const emp = cadastro ? state.employees.find(e=> String(e.cadastro) === cadastro) : null;
+  if(needsEmp && !emp){
+    showToast("Colaborador não encontrado (recarregue a página)." );
+    return;
+  }
+
+  // se for com colaborador, o armário precisa bater (evita bagunçar o índice)
+  if(needsEmp && (emp.armario == null || Number(emp.armario) !== locker)){
+    showToast("Esse colaborador não está com esse armário. Ajuste o armário do colaborador primeiro.");
+    return;
+  }
+
+  const totalAntes = totalKeysForLocker(locker);
+  let totalDepois = totalAntes;
+  let deltaTotal = 0;
+
+  try{
+    if(tipo === "COPIA_FEITA"){
+      totalDepois = Math.max(0, Math.floor(totalAntes) + 1);
+      deltaTotal = totalDepois - totalAntes;
+      await saveLockerKeys(locker, totalDepois);
+      await logHistoricoChave({ tipo, armario: locker, cadastro: "", nome: "", chaveEntregueEm: null, obs, totalAntes, totalDepois, deltaTotal });
+      showToast(`Armário ${locker}: cópia registrada (+1).`);
+    }
+
+    if(tipo === "ENTREGOU"){
+      const hadKey = !!emp.chaveEntregueEm;
+      if(!hadKey){
+        const avail = keysAvailableForLocker(locker);
+        if(avail <= 0){
+          showToast("Sem chave reserva disponível para entregar. Registre uma cópia primeiro.");
+          return;
+        }
+      }
+      const updated = { ...emp, chaveEntregueEm: date };
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({
+        tipo: hadKey ? "ENTREGOU (2ª via)" : "ENTREGOU",
+        armario: locker,
+        cadastro: updated.cadastro,
+        nome: updated.nome,
+        chaveEntregueEm: date,
+        obs: obs || (hadKey ? "2ª via" : "")
+      });
+      showToast(`Chave entregue para ${updated.nome}.`);
+    }
+
+    if(tipo === "DEVOLVEU"){
+      const updated = { ...emp, chaveEntregueEm: null };
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({ tipo: "DEVOLVEU", armario: locker, cadastro: updated.cadastro, nome: updated.nome, chaveEntregueEm: null, obs });
+      showToast(`Chave devolvida por ${updated.nome}.`);
+    }
+
+    if(tipo === "PERDEU"){
+      const hadKey = !!emp.chaveEntregueEm;
+      const updated = { ...emp, chaveEntregueEm: null };
+      // total de chaves diminui (chave física perdida)
+      const inUseNow = keysInUseForLocker(locker);
+      const inUseAfter = Math.max(0, inUseNow - (hadKey ? 1 : 0));
+      totalDepois = Math.max(0, Math.floor(totalAntes) - 1);
+      if(totalDepois < inUseAfter) totalDepois = inUseAfter;
+      deltaTotal = totalDepois - totalAntes;
+
+      await saveLockerKeys(locker, totalDepois);
+      await writeEmployee(updated, updated.armario);
+      await logHistoricoChave({
+        tipo: "PERDEU",
+        armario: locker,
+        cadastro: updated.cadastro,
+        nome: updated.nome,
+        chaveEntregueEm: null,
+        obs: obs || "chave perdida",
+        totalAntes,
+        totalDepois,
+        deltaTotal
+      });
+      showToast(`Perda registrada: ${updated.nome}.`);
+    }
+
+    clearKeyEvtForm();
+  }catch(err){
+    showToast("Erro ao registrar evento: " + (err?.message || err));
+  }
+}
+
+// liga os inputs do formulário (se existir)
+if(el("keyEvtDate")) el("keyEvtDate").value = todayISO();
+if(el("btnKeyEvtSave")) el("btnKeyEvtSave").addEventListener("click", (e)=>{ e.preventDefault(); handleKeyEvtSave(); });
+if(el("btnKeyEvtClear")) el("btnKeyEvtClear").addEventListener("click", (e)=>{ e.preventDefault(); clearKeyEvtForm(); });
+
+// filtro do histórico
+if(el("histFilter")) el("histFilter").addEventListener("input", ()=> renderHistory());
+if(el("btnClearHist")) el("btnClearHist").addEventListener("click", (e)=>{
+  e.preventDefault();
+  el("histFilter").value = "";
+  renderHistory();
 });
 
 el("btnAddCopy").addEventListener("click", async ()=>{
