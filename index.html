@@ -48,6 +48,43 @@
       <button class="tab" data-tab="history">Histórico 📜</button>
     </nav>
 
+    
+    <section class="claim-only" id="claimOnly">
+      <div class="claim-card">
+        <div class="claim-title">🔐 Confirmar armário</div>
+        <div class="muted small" id="claimSub">Autoatendimento via QR do armário</div>
+
+        <div class="form-grid" style="margin-top:12px">
+          <label>
+            <span>Armário</span>
+            <input id="claimOnlyLocker" type="number" readonly />
+          </label>
+
+          <label>
+            <span>Matrícula</span>
+            <input id="claimOnlyCadastro" type="text" inputmode="numeric" placeholder="Ex.: 26335" />
+          </label>
+
+          <label style="grid-column: 1 / -1">
+            <span>Nome</span>
+            <input id="claimOnlyNome" type="text" readonly placeholder="Digite a matrícula" />
+          </label>
+
+          <label style="grid-column: 1 / -1; display:flex; gap:10px; align-items:center">
+            <input id="claimOnlyAgree" type="checkbox" />
+            <span class="small">Está correto? Confirmo que este armário é meu.</span>
+          </label>
+        </div>
+
+        <div class="row" style="gap:10px; margin-top:14px">
+          <button class="btn" id="claimOnlyConfirm" disabled>Confirmar</button>
+        </div>
+
+        <div class="muted small" id="claimOnlyMsg" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+
     <section class="panel active" id="tab-colabs">
       <div class="toolbar">
         <div class="search">

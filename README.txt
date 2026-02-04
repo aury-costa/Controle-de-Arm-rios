@@ -27,3 +27,6 @@ v4: Controle de cópias de chaves por armário (lockerKeys), com validação na 
 
 
 [Correção] QR agora permite definir URL pública (ex.: GitHub Pages) para funcionar no celular. Impressão corrigida (QR card fora da área escondida na impressão).
+
+
+[Atualização] Modo QR restrito: quem acessa via ?claim=1 vê apenas a tela de confirmar armário (sem acesso às demais abas).

@@ -437,3 +437,22 @@ label input, label select{
   .qr-card{ box-shadow:none !important; border:none !important; background:#fff !important; }
   .qr-item{ border:1px solid #ddd !important; background:#fff !important; }
 }
+
+
+/* ===== Claim Mode (somente confirmar armário via QR) ===== */
+.claim-only{ display:none; }
+body.claim-mode .claim-only{ display:block; max-width: 520px; margin: 28px auto; padding: 0 16px; }
+body.claim-mode .tabs,
+body.claim-mode .panel,
+body.claim-mode .topbar,
+body.claim-mode .toast,
+body.claim-mode dialog { display:none !important; }
+
+.claim-card{
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255,255,255,.04);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.claim-title{ font-size: 18px; font-weight: 800; letter-spacing:.2px; }

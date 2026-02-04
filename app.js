@@ -228,7 +228,7 @@ function startRealtime(){
     renderAll();
     // se veio via QR (?claim=1&locker=...), abre o modal depois que os colaboradores carregarem
     if(pendingClaimLocker != null){
-      openClaimModal(pendingClaimLocker);
+      openClaimOnly(pendingClaimLocker);
       pendingClaimLocker = null;
     }
   });
@@ -427,10 +427,18 @@ function switchTab(name){
   }
 }
 
-tabs.forEach(t => t.addEventListener("click", ()=> switchTab(t.dataset.tab)));
+tabs.forEach(t => t.addEventListener("click", ()=> { if(document.body.classList.contains("claim-mode")) return; switchTab(t.dataset.tab); }));
 
 // ===== QR / Autoatendimento (por armário) =====
 const claimModal = el("claimModal");
+const claimOnly = el("claimOnly");
+const claimOnlyLocker = el("claimOnlyLocker");
+const claimOnlyCadastro = el("claimOnlyCadastro");
+const claimOnlyNome = el("claimOnlyNome");
+const claimOnlyAgree = el("claimOnlyAgree");
+const claimOnlyConfirm = el("claimOnlyConfirm");
+const claimOnlyMsg = el("claimOnlyMsg");
+
 const claimForm = el("claimForm");
 const claimLockerInput = el("claimLocker");
 const claimCadastro = el("claimCadastro");
@@ -472,6 +480,7 @@ function buildLockerClaimUrl(n){
 }
 
 function openClaimModal(lockerNumber){
+  if(document.body.classList.contains('claim-mode')) return;
   const n = Number(lockerNumber);
   if(!Number.isFinite(n)) return;
 
@@ -491,6 +500,44 @@ function refreshClaimUI(){
   claimNome.value = emp ? emp.nome : "";
   claimConfirm.disabled = !(emp && claimAgree.checked);
 }
+
+
+function setClaimMode(on){
+  document.body.classList.toggle("claim-mode", !!on);
+}
+
+function openClaimOnly(lockerNumber){
+  const n = Number(lockerNumber);
+  if(!Number.isFinite(n)) return;
+  if(claimOnlyLocker) claimOnlyLocker.value = String(n);
+  if(claimOnlyCadastro) claimOnlyCadastro.value = "";
+  if(claimOnlyNome) claimOnlyNome.value = "";
+  if(claimOnlyAgree) claimOnlyAgree.checked = false;
+  if(claimOnlyConfirm) claimOnlyConfirm.disabled = true;
+  if(claimOnlyMsg) claimOnlyMsg.textContent = "";
+  if(claimOnlyCadastro) setTimeout(()=>claimOnlyCadastro.focus(), 50);
+}
+
+function refreshClaimOnlyUI(){
+  const cad = String(claimOnlyCadastro?.value ?? "").trim();
+  const emp = state.employees.find(e => String(e.cadastro) === cad);
+  if(claimOnlyNome) claimOnlyNome.value = emp ? emp.nome : "";
+  if(claimOnlyConfirm) claimOnlyConfirm.disabled = !(emp && claimOnlyAgree?.checked);
+}
+claimOnlyCadastro?.addEventListener("input", refreshClaimOnlyUI);
+claimOnlyAgree?.addEventListener("change", refreshClaimOnlyUI);
+
+claimOnlyConfirm?.addEventListener("click", async ()=>{
+  try{
+    claimOnlyConfirm.disabled = true;
+    if(claimOnlyMsg) claimOnlyMsg.textContent = "Confirmando…";
+    await selfAssignLocker(claimOnlyCadastro.value, claimOnlyLocker.value);
+    if(claimOnlyMsg) claimOnlyMsg.textContent = "✅ Confirmado. Você já pode fechar esta página.";
+  }catch(err){
+    if(claimOnlyMsg) claimOnlyMsg.textContent = err?.message ?? "Não foi possível confirmar.";
+    claimOnlyConfirm.disabled = false;
+  }
+});
 
 claimCadastro?.addEventListener("input", refreshClaimUI);
 claimAgree?.addEventListener("change", refreshClaimUI);
@@ -620,8 +667,12 @@ btnPrintQR?.addEventListener("click", ()=>{
   const locker = params.get("locker");
   if(String(claim) === "1" && locker){
     pendingClaimLocker = Number(locker);
+    setClaimMode(true);
     // se já carregou, abre imediatamente
-    if(state.employees?.length) openClaimModal(pendingClaimLocker);
+    if(state.employees?.length){
+      openClaimOnly(pendingClaimLocker);
+      pendingClaimLocker = null;
+    }
   }
 })();
 
