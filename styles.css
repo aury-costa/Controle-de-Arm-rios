@@ -62,12 +62,10 @@ body{
   box-shadow: 0 10px 18px rgba(0,0,0,.22);
 }
 .pill-ok{ border-color: rgba(52,211,153,.35); }
-.pill-warn{ border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.10); }
-.pill.pulse{ animation: pulseDanger 1.4s ease-in-out infinite; }
 .pill-label{ color:var(--muted); font-size:11px; }
 .pill-value{ font-size:18px; font-family: var(--mono); margin-top:3px; }
 
-.container{ max-width: 1200px; margin: 0 auto; padding: 20px; }
+.container{ max-width: 1200px; margin: 0 auto; padding: 16px; }
 .tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 14px; }
 .tab{
   cursor:pointer;
@@ -217,14 +215,14 @@ body{
 .cards{
   display:grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 .card{
   grid-column: span 6;
   border:1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(16,26,46,.42);
-  padding: 18px;
+  background: rgba(16,26,46,.45);
+  padding: 14px;
   box-shadow: var(--shadow);
 }
 .card.danger{ border-color: rgba(251,113,133,.35); }

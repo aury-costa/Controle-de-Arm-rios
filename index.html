@@ -31,21 +31,16 @@
         <div class="pill-label">Disponíveis</div>
         <div class="pill-value" id="freeLockers">300</div>
       </div>
-
-      <div class="pill pill-warn" id="zeroKeysPill" title="Armários onde não existe chave reserva (disponível = 0)">
-        <div class="pill-label">Sem reserva</div>
-        <div class="pill-value" id="zeroKeysCount">0</div>
-      </div>
     </div>
   </header>
 
   <main class="container">
     <nav class="tabs">
-      <button class="tab active" data-tab="colabs">Colaboradores 👥</button>
-      <button class="tab" data-tab="lockers">Armários 🧰</button>
-      <button class="tab" data-tab="import">Importar/Exportar 📦</button>
-      <button class="tab" data-tab="config">Config ⚙️</button>
-      <a class="tab tab-link" href="/historicoChaves" data-tab="history">Histórico 📜</a>
+      <button class="tab active" data-tab="colabs">Colaboradores</button>
+      <button class="tab" data-tab="lockers">Armários disponíveis</button>
+      <button class="tab" data-tab="import">Importar/Exportar</button>
+      <button class="tab" data-tab="config">Config</button>
+      <a class="tab tab-link" href="/historicoChaves" data-tab="history">Histórico</a>
     </nav>
 
     <section class="panel active" id="tab-colabs">
@@ -209,50 +204,6 @@
 
     <section class="panel" id="tab-history">
       <div class="cards">
-
-        <div class="card">
-          <h3>🗝️ Controle rápido de chaves</h3>
-          <p class="muted small">Registre cópias, perdas e entregas/devoluções <b>sem mexer na estrutura do Firebase</b> (apenas adiciona eventos em <b>/historicoChaves</b> e, quando necessário, ajusta <b>/lockerKeys</b> e/ou <b>/employees</b>).</p>
-          <div class="form-grid" style="margin-top:10px">
-            <label>
-              <span>Armário</span>
-              <input id="keyEvtLocker" type="number" min="1" placeholder="Nº do armário" />
-            </label>
-
-            <label>
-              <span>Ação</span>
-              <select id="keyEvtType" class="select">
-                <option value="ENTREGOU">Entregou chave</option>
-                <option value="DEVOLVEU">Devolveu chave</option>
-                <option value="PERDEU">Perdeu chave</option>
-                <option value="COPIA_FEITA">Fiz cópia (+1)</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Colaborador</span>
-              <select id="keyEvtEmp" class="select">
-                <option value="">(selecione)</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Data</span>
-              <input id="keyEvtDate" type="date" />
-            </label>
-          </div>
-
-          <label style="display:block; margin-top:10px">
-            <span>Observação (opcional)</span>
-            <input id="keyEvtObs" placeholder="Ex.: entreguei 2ª via, chave quebrada, etc." />
-          </label>
-
-          <div class="row" style="margin-top:12px">
-            <button class="btn" id="btnKeyEvtSave">Registrar evento</button>
-            <button class="btn btn-ghost" id="btnKeyEvtClear">Limpar</button>
-          </div>
-        </div>
-
         <div class="card">
           <h3>📜 Histórico de chaves</h3>
           <p class="muted small">Últimos 200 registros (tempo real). Você pode abrir direto em <b>/historicoChaves</b>.</p>
@@ -261,7 +212,7 @@
             <button class="btn btn-ghost" id="btnClearHist">Limpar filtro</button>
           </div>
           <div class="table-wrap" style="margin-top:12px">
-            <table class="grid" style="min-width: 980px">
+            <table class="grid" style="min-width: 820px">
               <thead>
                 <tr>
                   <th>Quando</th>
@@ -269,7 +220,6 @@
                   <th>Armário</th>
                   <th>Matrícula</th>
                   <th>Nome</th>
-                  <th>Obs</th>
                 </tr>
               </thead>
               <tbody id="histBody"></tbody>
