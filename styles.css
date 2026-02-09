@@ -430,10 +430,59 @@ label input, label select{
   margin-top:6px;
 }
 @media print{
-  body{ background:#fff !important; }
+  @page{ size: A4; margin: 10mm; }
+
+  html, body{
+    width: 210mm !important;
+    height: auto !important;
+    background:#fff !important;
+    color:#000 !important;
+  }
+
+  /* esconder UI, imprimir só a grade de QR */
   .topbar, .tabs, #tab-colabs, #tab-import, #tab-config, #tab-history,
-  .toolbar, .locker-pos-card, #freeGrid, .toast { display:none !important; }
+  .toolbar, .locker-pos-card, .locker-keys-card, #freeGrid, .toast,
+  .lockers-head, .lockers-sub, #qrHint { display:none !important; }
+
   #tab-lockers{ display:block !important; }
+
+  .qr-card{ box-shadow:none !important; border:none !important; background:#fff !important; }
+
+  /* 12 por folha (3x4) — tamanho fixo pra A4 */
+  .qr-grid{
+    display:grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    column-gap: 6mm !important;
+    row-gap: 4mm !important;
+  }
+
+  .qr-item{
+    border:1px solid #ddd !important;
+    background:#fff !important;
+    padding: 5mm 4mm !important;
+    border-radius: 8px !important;
+    text-align:center !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: 66mm !important; /* fecha 4 linhas na folha */
+  }
+
+  /* NÃO imprimir o link/URL */
+  .qr-item .qr-url,
+  .qr-item a{ display:none !important; }
+
+  /* QR com tamanho garantido */
+  .qr-item canvas,
+  .qr-item img{
+    width: 32mm !important;
+    height: 32mm !important;
+  }
+
+  /* evita títulos grandes gastarem espaço */
+  .qr-item .qr-top{ margin-bottom: 2mm !important; }
+  .qr-item .qr-num{ font-size: 12px !important; }
+}
+#tab-lockers{ display:block !important; }
   .qr-card{ box-shadow:none !important; border:none !important; background:#fff !important; }
   .qr-item{ border:1px solid #ddd !important; background:#fff !important; }
 }
@@ -486,3 +535,59 @@ html.admin-locked body dialog { display:none !important; }
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
 }
 .admin-title{ font-size: 18px; font-weight: 800; letter-spacing:.2px; }
+
+
+/* Fallback final: garante 12 QR A4 e esconde URL */
+@media print{
+  @page{ size: A4; margin: 10mm; }
+
+  html, body{
+    width: 210mm !important;
+    height: auto !important;
+    background:#fff !important;
+    color:#000 !important;
+  }
+
+  /* esconder UI, imprimir só a grade de QR */
+  .topbar, .tabs, #tab-colabs, #tab-import, #tab-config, #tab-history,
+  .toolbar, .locker-pos-card, .locker-keys-card, #freeGrid, .toast,
+  .lockers-head, .lockers-sub, #qrHint { display:none !important; }
+
+  #tab-lockers{ display:block !important; }
+
+  .qr-card{ box-shadow:none !important; border:none !important; background:#fff !important; }
+
+  /* 12 por folha (3x4) — tamanho fixo pra A4 */
+  .qr-grid{
+    display:grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    column-gap: 6mm !important;
+    row-gap: 4mm !important;
+  }
+
+  .qr-item{
+    border:1px solid #ddd !important;
+    background:#fff !important;
+    padding: 5mm 4mm !important;
+    border-radius: 8px !important;
+    text-align:center !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: 66mm !important; /* fecha 4 linhas na folha */
+  }
+
+  /* NÃO imprimir o link/URL */
+  .qr-item .qr-url,
+  .qr-item a{ display:none !important; }
+
+  /* QR com tamanho garantido */
+  .qr-item canvas,
+  .qr-item img{
+    width: 32mm !important;
+    height: 32mm !important;
+  }
+
+  /* evita títulos grandes gastarem espaço */
+  .qr-item .qr-top{ margin-bottom: 2mm !important; }
+  .qr-item .qr-num{ font-size: 12px !important; }
+}
