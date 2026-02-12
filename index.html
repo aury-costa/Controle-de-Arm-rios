@@ -221,6 +221,24 @@
           <div id="qrGrid" class="qr-grid" style="margin-top:12px"></div>
         </div>
 
+        
+        <div class="card locker-maint-card">
+          <h3>🔧 Manutenção de armários</h3>
+          <p class="muted small">Marque armários que precisam de manutenção (porta estragada, sem porta, etc.). Isso não muda a estrutura atual — apenas grava em <span class="mono">/lockerMaint</span>.</p>
+          <div class="row">
+            <input type="number" id="maintNumber" min="1" placeholder="Nº do armário" />
+            <select id="maintStatus">
+              <option value="OK">OK</option>
+              <option value="MANUTENCAO">PRECISA MANUTENÇÃO</option>
+            </select>
+            <input type="text" id="maintNote" placeholder="Obs.: porta quebrada, sem porta..." style="min-width:260px; flex:1" />
+            <button class="btn" id="btnSaveMaint">Salvar</button>
+            <button class="btn btn-ghost" id="btnClearMaint">Limpar</button>
+          </div>
+          <p class="muted small" id="maintHint" style="margin-top:8px"></p>
+        </div>
+
+
         <div id="freeGrid" class="free-grid"></div>
       </div>
     

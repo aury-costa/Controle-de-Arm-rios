@@ -124,7 +124,8 @@ let state = {
   totalLockers: 300,
   defaultSplit: 150, // 1..X = BAIXO, X+1..total = CIMA (padrão)
   lockerPositions: {}, // override por número: { "42": "CIMA" }
-  lockerKeys: {}, // override por número: { "42": 2 } (total de chaves)
+  lockerKeys: {},
+  lockerMaint: {}, // override por número: { "42": 2 } (total de chaves)
   employees: [], // [{cadastro, nome, admissao, cargo, armario, chaveEntregueEm}]
 };
 
@@ -184,6 +185,14 @@ function lockerPosition(n){
 }
 
 // ===== Chaves (cópias) por armário =====
+
+function maintInfoForLocker(n){
+  const m = state.lockerMaint ? (state.lockerMaint[String(n)] || state.lockerMaint[n]) : null;
+  if(!m) return {status:"OK", note:""};
+  const status = m.status || (m.need ? "MANUTENCAO" : "OK") || "OK";
+  return {status, note: String(m.note || m.obs || "")};
+}
+
 function totalKeysForLocker(n){
   const v = state.lockerKeys?.[String(n)];
   const num = Number(v);
@@ -320,6 +329,12 @@ function startRealtime(){
   // locker keys (total de cópias por armário)
   onValue(ref(db, "lockerKeys"), (snap)=>{
     state.lockerKeys = snap.val() || {};
+    renderAll();
+  });
+
+  // manutenção de armários
+  onValue(ref(db, "lockerMaint"), (snap)=>{
+    state.lockerMaint = snap.val() || {};
     renderAll();
   });
 
@@ -910,6 +925,17 @@ Clique para copiar o número`;
     keyTag.textContent = `CHAVES ${Math.max(0,availKeys)}/${totalKeys}`;
 
     badgeLine.appendChild(keyTag);
+
+    // manutenção
+    const mi = maintInfoForLocker(n);
+    if(mi.status === "MANUTENCAO"){
+      card.classList.add("manut");
+      const mTag = document.createElement("span");
+      mTag.className = "tag maint";
+      mTag.textContent = "🔧 MANUT";
+      badgeLine.appendChild(mTag);
+      card.title += `\n\n⚠️ MANUTENÇÃO: ${mi.note || "(sem obs.)"}`;
+    }
 
     card.appendChild(num);
     card.appendChild(badgeLine);
