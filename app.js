@@ -332,8 +332,8 @@ function startRealtime(){
     renderAll();
   });
 
-  // manutenção de armários
-  onValue(ref(db, "lockerMaint"), (snap)=>{
+  // manutenção de armários (config/lockerMaint)
+  onValue(ref(db, "config/lockerMaint"), (snap)=>{
     state.lockerMaint = snap.val() || {};
     renderAll();
   });
