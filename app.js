@@ -332,8 +332,8 @@ function startRealtime(){
     renderAll();
   });
 
-  // manutenção de armários (config/lockerMaint)
-  onValue(ref(db, "config/lockerMaint"), (snap)=>{
+  // manutenção de armários
+  onValue(ref(db, "lockerMaint"), (snap)=>{
     state.lockerMaint = snap.val() || {};
     renderAll();
   });
@@ -1620,3 +1620,91 @@ try{
     switchTab("history");
   }
 }catch{}
+
+// ===== INIT_MAINTENANCE_BLOCK_V1 =====
+(function initMaintenanceUI(){
+  try{
+    const maintNumber = document.getElementById("maintNumber");
+    const maintStatus = document.getElementById("maintStatus");
+    const maintNote = document.getElementById("maintNote");
+    const btnSaveMaint = document.getElementById("btnSaveMaint");
+    const btnClearMaint = document.getElementById("btnClearMaint");
+    const maintHint = document.getElementById("maintHint");
+    if(!btnSaveMaint) return;
+
+    const safeToast = (msg)=>{
+      try{ if(typeof showToast === "function") showToast(msg); }catch(e){}
+      try{ console.log("[maint]", msg); }catch(e){}
+    };
+
+    async function trySet(path, payload){
+      return await set(ref(db, path), payload);
+    }
+
+    async function saveMaint(n, status, note){
+      const payload = { status, note, updatedAt: Date.now() };
+      // 1) tenta em config (mais provável estar liberado)
+      try{
+        await trySet(`config/lockerMaint/${n}`, payload);
+        return { path:`config/lockerMaint/${n}` };
+      }catch(e1){
+        // 2) fallback para root
+        await trySet(`lockerMaint/${n}`, payload);
+        return { path:`lockerMaint/${n}` };
+      }
+    }
+
+    btnSaveMaint.addEventListener("click", async ()=>{
+      const n = Number(maintNumber?.value);
+      const max = (typeof state !== "undefined" && state.totalLockers) ? Number(state.totalLockers) : null;
+      if(!Number.isFinite(n) || n < 1 || (max && n > max)){
+        safeToast("Informe um número de armário válido.");
+        return;
+      }
+      const status = String(maintStatus?.value || "OK");
+      const note = String(maintNote?.value || "").trim();
+      btnSaveMaint.disabled = true;
+      try{
+        const res = await saveMaint(n, status, note);
+        safeToast(status === "MANUTENCAO" ? `Armário ${n} marcado para manutenção.` : `Armário ${n} OK.`);
+        if(maintHint) maintHint.textContent = `Salvo em /${res.path}` + (note ? ` • ${note}` : "");
+        try{ if(typeof renderAll === "function") renderAll(); }catch(e){}
+      }catch(err){
+        console.error("Erro ao salvar manutenção:", err);
+        safeToast("Erro ao salvar manutenção (ver console).");
+      }finally{
+        btnSaveMaint.disabled = false;
+      }
+    });
+
+    btnClearMaint?.addEventListener("click", ()=>{
+      if(maintNumber) maintNumber.value = "";
+      if(maintStatus) maintStatus.value = "OK";
+      if(maintNote) maintNote.value = "";
+      if(maintHint) maintHint.textContent = "";
+    });
+
+    // escuta os dois caminhos (para refletir a tag)
+    try{
+      onValue(ref(db, "config/lockerMaint"), (snap)=>{
+        try{
+          if(typeof state !== "undefined") state.lockerMaint = snap.val() || {};
+          if(typeof renderAll === "function") renderAll();
+        }catch(e){}
+      });
+    }catch(e){}
+    try{
+      onValue(ref(db, "lockerMaint"), (snap)=>{
+        try{
+          if(typeof state !== "undefined"){
+            const v = snap.val() || {};
+            state.lockerMaint = Object.assign({}, v, state.lockerMaint || {});
+          }
+          if(typeof renderAll === "function") renderAll();
+        }catch(e){}
+      });
+    }catch(e){}
+  }catch(e){
+    console.warn("initMaintenanceUI failed", e);
+  }
+})();
