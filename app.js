@@ -124,8 +124,8 @@ let state = {
   totalLockers: 300,
   defaultSplit: 150, // 1..X = BAIXO, X+1..total = CIMA (padrão)
   lockerPositions: {}, // override por número: { "42": "CIMA" }
-  lockerKeys: {},
-  lockerMaint: {}, // override por número: { "42": 2 } (total de chaves)
+  lockerKeys: {}, // override por número: { "42": 2 } (total de chaves)
+  lockerMaint: {}, // { "42": {status:"MANUTENCAO"|"OK", note:"", updatedAt:...} }
   employees: [], // [{cadastro, nome, admissao, cargo, armario, chaveEntregueEm}]
 };
 
@@ -187,10 +187,10 @@ function lockerPosition(n){
 // ===== Chaves (cópias) por armário =====
 
 function maintInfoForLocker(n){
-  const m = state.lockerMaint ? (state.lockerMaint[String(n)] || state.lockerMaint[n]) : null;
-  if(!m) return {status:"OK", note:""};
-  const status = m.status || (m.need ? "MANUTENCAO" : "OK") || "OK";
-  return {status, note: String(m.note || m.obs || "")};
+  const v = state.lockerMaint ? (state.lockerMaint[String(n)] || state.lockerMaint[n]) : null;
+  if(!v) return { status:"OK", note:"" };
+  if(typeof v === "string") return { status: v, note:"" };
+  return { status: v.status || "MANUTENCAO", note: v.note || "" };
 }
 
 function totalKeysForLocker(n){
@@ -329,12 +329,6 @@ function startRealtime(){
   // locker keys (total de cópias por armário)
   onValue(ref(db, "lockerKeys"), (snap)=>{
     state.lockerKeys = snap.val() || {};
-    renderAll();
-  });
-
-  // manutenção de armários
-  onValue(ref(db, "lockerMaint"), (snap)=>{
-    state.lockerMaint = snap.val() || {};
     renderAll();
   });
 
@@ -927,15 +921,17 @@ Clique para copiar o número`;
     badgeLine.appendChild(keyTag);
 
     // manutenção
-    const mi = maintInfoForLocker(n);
-    if(mi.status === "MANUTENCAO"){
-      card.classList.add("manut");
-      const mTag = document.createElement("span");
-      mTag.className = "tag maint";
-      mTag.textContent = "🔧 MANUT";
-      badgeLine.appendChild(mTag);
-      card.title += `\n\n⚠️ MANUTENÇÃO: ${mi.note || "(sem obs.)"}`;
-    }
+    try{
+      const mi = maintInfoForLocker(n);
+      if(mi && mi.status === "MANUTENCAO"){
+        card.classList.add("manut");
+        const mtag = document.createElement("span");
+        mtag.className = "tag maint";
+        mtag.textContent = "🔧 MANUT";
+        if(mi.note) mtag.title = mi.note;
+        badgeLine.appendChild(mtag);
+      }
+    }catch(e){}
 
     card.appendChild(num);
     card.appendChild(badgeLine);
@@ -1621,6 +1617,7 @@ try{
   }
 }catch{}
 
+
 // ===== INIT_MAINTENANCE_BLOCK_V1 =====
 (function initMaintenanceUI(){
   try{
@@ -1643,12 +1640,10 @@ try{
 
     async function saveMaint(n, status, note){
       const payload = { status, note, updatedAt: Date.now() };
-      // 1) tenta em config (mais provável estar liberado)
       try{
         await trySet(`config/lockerMaint/${n}`, payload);
         return { path:`config/lockerMaint/${n}` };
       }catch(e1){
-        // 2) fallback para root
         await trySet(`lockerMaint/${n}`, payload);
         return { path:`lockerMaint/${n}` };
       }
@@ -1656,7 +1651,7 @@ try{
 
     btnSaveMaint.addEventListener("click", async ()=>{
       const n = Number(maintNumber?.value);
-      const max = (typeof state !== "undefined" && state.totalLockers) ? Number(state.totalLockers) : null;
+      const max = Number(state.totalLockers || 0) || null;
       if(!Number.isFinite(n) || n < 1 || (max && n > max)){
         safeToast("Informe um número de armário válido.");
         return;
@@ -1668,7 +1663,6 @@ try{
         const res = await saveMaint(n, status, note);
         safeToast(status === "MANUTENCAO" ? `Armário ${n} marcado para manutenção.` : `Armário ${n} OK.`);
         if(maintHint) maintHint.textContent = `Salvo em /${res.path}` + (note ? ` • ${note}` : "");
-        try{ if(typeof renderAll === "function") renderAll(); }catch(e){}
       }catch(err){
         console.error("Erro ao salvar manutenção:", err);
         safeToast("Erro ao salvar manutenção (ver console).");
@@ -1684,23 +1678,21 @@ try{
       if(maintHint) maintHint.textContent = "";
     });
 
-    // escuta os dois caminhos (para refletir a tag)
+    // escuta os dois caminhos (config primeiro)
     try{
       onValue(ref(db, "config/lockerMaint"), (snap)=>{
         try{
-          if(typeof state !== "undefined") state.lockerMaint = snap.val() || {};
-          if(typeof renderAll === "function") renderAll();
+          state.lockerMaint = snap.val() || {};
+          if(typeof renderLockers === "function") renderLockers();
         }catch(e){}
       });
     }catch(e){}
     try{
       onValue(ref(db, "lockerMaint"), (snap)=>{
         try{
-          if(typeof state !== "undefined"){
-            const v = snap.val() || {};
-            state.lockerMaint = Object.assign({}, v, state.lockerMaint || {});
-          }
-          if(typeof renderAll === "function") renderAll();
+          const v = snap.val() || {};
+          state.lockerMaint = Object.assign({}, v, state.lockerMaint || {});
+          if(typeof renderLockers === "function") renderLockers();
         }catch(e){}
       });
     }catch(e){}

@@ -38,7 +38,4 @@ v4: Controle de cópias de chaves por armário (lockerKeys), com validação na 
 [Ajuste fino] No modo QR, a confirmação 'Está correto?' já vem marcada automaticamente (e travada) e o botão Confirmar ficou maior.
 
 
-[Ajustes finos v2] Manutenção (/lockerMaint) + impressão QR (12 por A4, só QR + número).
-
-
-[Hotfix] Manutenção: botão Salvar agora sempre dispara ação. Usa fallback config/lockerMaint -> lockerMaint.
+[Patch] Adicionado Manutenção de armários (salva em /config/lockerMaint com fallback).

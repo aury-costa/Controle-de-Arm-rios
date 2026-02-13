@@ -224,7 +224,7 @@
         
         <div class="card locker-maint-card">
           <h3>🔧 Manutenção de armários</h3>
-          <p class="muted small">Marque armários que precisam de manutenção (porta estragada, sem porta, etc.). Isso não muda a estrutura atual — apenas grava em <span class="mono">/lockerMaint</span>.</p>
+          <p class="muted small">Marque armários que precisam de manutenção (porta estragada, sem porta, etc.). Salva no Firebase em <span class="mono">/config/lockerMaint</span> (com fallback).</p>
           <div class="row">
             <input type="number" id="maintNumber" min="1" placeholder="Nº do armário" />
             <select id="maintStatus">
@@ -237,7 +237,6 @@
           </div>
           <p class="muted small" id="maintHint" style="margin-top:8px"></p>
         </div>
-
 
         <div id="freeGrid" class="free-grid"></div>
       </div>

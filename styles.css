@@ -487,62 +487,14 @@ html.admin-locked body dialog { display:none !important; }
 }
 .admin-title{ font-size: 18px; font-weight: 800; letter-spacing:.2px; }
 
+
 /* ===== Manutenção ===== */
 .tag.maint{
   border-color: rgba(250,204,21,.45);
   background: rgba(250,204,21,.14);
-  color: #fff;
+  color: var(--text);
 }
 .free-item.manut{
-  border:1px solid rgba(250,204,21,.35) !important;
-  background: rgba(250,204,21,.10) !important;
-}
-
-/* ===== Impressão QR (12 por página A4) ===== */
-@page{ size:A4; margin:8mm; }
-@media print{
-  /* Desmarque "Cabeçalhos e rodapés" no navegador para não aparecer data/URL. */
-  html,body{ background:#fff !important; color:#000 !important; }
-  .topbar, .tabs,
-  #tab-colabs, #tab-import, #tab-config, #tab-history,
-  #tab-lockers .toolbar,
-  #tab-lockers .lockers,
-  #tab-lockers #freeGrid,
-  #tab-lockers .locker-pos-card,
-  #tab-lockers .locker-keys-card,
-  #tab-lockers .locker-maint-card,
-  #tab-lockers #qrHint,
-  #tab-lockers #btnGenQR,
-  #tab-lockers #btnPrintQR,
-  #tab-lockers #qrFrom,
-  #tab-lockers #qrTo,
-  #tab-lockers #qrBaseUrl,
-  #tab-lockers .qr-head,
-  .toast,
-  dialog { display:none !important; }
-
-  #tab-lockers{ display:block !important; }
-  #tab-lockers .qr-card{ display:block !important; border:none !important; background:#fff !important; box-shadow:none !important; padding:0 !important; }
-
-  .qr-grid{
-    display:grid !important;
-    grid-template-columns: repeat(3, 1fr) !important; /* 3x4 = 12 por página */
-    gap: 6mm !important;
-  }
-  .qr-item{
-    border: 1px solid #000 !important;
-    background:#fff !important;
-    border-radius: 6mm !important;
-    padding: 5mm !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
-    text-align:center;
-  }
-  .qr-item .qr-top{ justify-content:center !important; }
-  .qr-item .qr-num{
-    font-size: 18px !important;
-    font-weight: 900 !important;
-    margin-bottom: 3mm !important;
-  }
-  .qr-item .qr-url{ display:none !important; }
+  border-color: rgba(250,204,21,.45) !important;
+  box-shadow: 0 0 0 1px rgba(250,204,21,.10), var(--shadow);
 }
